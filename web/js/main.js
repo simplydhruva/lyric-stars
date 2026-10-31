@@ -485,10 +485,14 @@ function importTimings(text) {
     : `Imported word times for ${timed} lines.`;
 }
 
+// ms > 0 shows the lyrics earlier (they felt late); ms < 0 later (they felt early). null resets this song.
 function nudgeSongOffset(ms) {
   if (!app.track) return;
-  const v = sync.setSongOffset(app.track.key, sync.songOffset(app.track.key) + ms);
-  toast(`Offset ${sync.formatOffset(v)} for this song`);
+  const before = sync.songOffset(app.track.key);
+  const v = sync.setSongOffset(app.track.key, ms == null ? 0 : before + ms);
+  const dir = v > before ? 1 : v < before ? -1 : 0;
+  toast(ms == null ? 'Timing for this song reset' : dir === 0 ? `Offset limit reached (${sync.formatOffset(v)})` : `Lyrics ${dir > 0 ? 'earlier' : 'later'}: offset ${sync.formatOffset(v)} for this song`);
+  if (dir !== 0 || ms == null) renderer.flash(dir);
   editor.paint();
 }
 
@@ -719,7 +723,8 @@ window.addEventListener('keydown', (e) => {
   if (e.code === 'BracketLeft' || e.code === 'BracketRight') {
     const step = e.shiftKey ? sync.FINE_STEP_MS : sync.OFFSET_STEP_MS;
     nudgeSongOffset(e.code === 'BracketLeft' ? step : -step);
-  } else if (k === 'f') toggleFullscreen();
+  } else if (e.code === 'Backslash') nudgeSongOffset(null);
+  else if (k === 'f') toggleFullscreen();
   else if (k === 'o' && desktop) desktop.toggleOverlay();
   else if (k === 'm') toggleMode();
   else if (k === 'v') cycleScene();

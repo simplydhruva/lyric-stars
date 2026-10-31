@@ -89,6 +89,8 @@ Diagnostics (`D`) shows which source and player are in use.
 - Real word times win: enhanced LRC `<mm:ss.xx>` word tags, or your own taps. Otherwise words are
   estimated from syllables (CMU dictionary exceptions, then a vowel-group rule) with a breath before each line.
 - The corner chip says which: `word-timed`, `your timing` or `estimated`.
+- **Sync flash:** when the lyrics feel late, press `[` (they show 50 ms earlier for this song; `Shift+[` is 10 ms); when they feel
+  early, press `]`. A ring of light and a note confirm each nudge, and Backslash resets the song. Saved per song.
 - Drawn position = playback position + display latency (measured from the refresh rate) + global offset + song offset.
   Positive offsets show lyrics earlier. Use the global offset for Bluetooth or speaker delay (Sync editor, Global −/+).
 - **Sync editor (`E`):** tap `Space` on each word as you hear it; a line is saved once all its words are tapped.
@@ -150,6 +152,7 @@ web/js/scenes/            index.js (registry, frame object), constellation.js, k
                           chorus.js (finds repeated lines: the constellation brings their stars back bigger, kinetic makes them bigger)
 tools/visual.mjs          pixel check: renders fixed frames to PNGs (--out) or compares against them (--compare)
 tools/lib/headless.mjs    shared headless-browser helpers for the browser checks below
+tools/flash-check.mjs      checks the sync flash and offset keys in every scene
 tools/themes.mjs           screenshots every theme (and album colors, from a fake cover) in every scene; checks each one tints the lyrics
 tools/lib/fake-spotify.mjs  scripted fake Spotify and lyrics service (songs, no-lyrics song, ad, podcast; pause, seek, skip)
 tools/mock.mjs            runs the whole app against the fake Spotify in every scene (npm run mock)

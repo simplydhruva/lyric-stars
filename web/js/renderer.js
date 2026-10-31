@@ -6,6 +6,7 @@ import { lineIndexAt } from './lyrics/lrc.js';
 import { Background } from './background.js';
 import { makeTheme, THEMES, fontCss } from './theme.js';
 import { createScene, SCENE_IDS } from './scenes/index.js';
+import { drawFlash, flashing } from './sync-flash.js';
 
 const IDLE_FRAME_MS = 50; // when only the background moves, 20 frames a second is plenty
 
@@ -71,6 +72,11 @@ export class Renderer {
     return true;
   }
 
+  // Shows the sync flash (see sync-flash.js). dir: +1 lyrics now earlier, -1 later, 0 reset.
+  flash(dir, now = performance.now()) {
+    this.flashState = { at: now, dir };
+  }
+
   // Returns false when nothing changed and the frame was skipped.
   draw(pos, { mode = 'word', playing = true, quiet = false, now = performance.now(), scene = this.sceneId, displayMode = 'window' } = {}) {
     const resized = this._resize();
@@ -78,7 +84,8 @@ export class Renderer {
     const { reduceMotion, backgroundStars, transparent } = this.opts;
     const sky = backgroundStars && !transparent;
     this.sceneId = SCENE_IDS.includes(scene) ? scene : SCENE_IDS[0];
-    const frameKey = `${Math.round(pos)}|${mode}|${quiet}|${this.sceneId}|${displayMode}|${w}x${h}@${dpr}`;
+    const flashOn = flashing(now, this.flashState?.at);
+    const frameKey = `${flashOn ? 'f' + Math.round(now) : ''}|${Math.round(pos)}|${mode}|${quiet}|${this.sceneId}|${displayMode}|${w}x${h}@${dpr}`;
     if (!resized && !playing && frameKey === this.lastFrameKey) {
       const moving = sky && this.background.animating(now, reduceMotion);
       if (!moving || now - this.lastDrawAt < IDLE_FRAME_MS) return false;
@@ -128,6 +135,7 @@ export class Renderer {
     f.previewNext = this.opts.previewNext !== false;
     f.songMap = this.opts.songMap !== false;
     this._scene(this.sceneId).draw(f);
+    if (flashOn) drawFlash(ctx, w, h, now, this.flashState, this.theme.star, reduceMotion);
     return true;
   }
 }
