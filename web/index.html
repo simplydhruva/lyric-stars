@@ -11,12 +11,16 @@
 <body>
   <canvas id="sky" aria-label="Lyrics constellation"></canvas>
 
+  <img id="mini-art" alt="" hidden>
+
   <div id="corner" hidden><img id="corner-art" alt="" width="40" height="40" hidden><span id="corner-title"></span></div>
 
   <div id="chips">
     <span id="chip" class="chip" hidden></span>
     <span id="timing" class="chip subtle" hidden title="How word times were found"></span>
   </div>
+
+  <div id="caption" hidden aria-live="off"></div>
 
   <section id="np" hidden aria-label="Now playing"></section>
 
@@ -55,14 +59,19 @@
     <button id="btn-mode" type="button" title="Word or line mode (M)"></button>
     <button id="btn-fullscreen" type="button" title="Fullscreen (F)">Fullscreen</button>
     <button id="btn-overlay" type="button" title="Floating overlay on top of other windows (O)" hidden>Overlay</button>
+    <button id="btn-mini" type="button" title="Small corner widget (N)" hidden>Mini</button>
     <button id="btn-wrong" type="button" title="These lyrics are for a different song" hidden>Wrong lyrics?</button>
     <button id="btn-editor" type="button" title="Tap-to-sync editor (E)">Sync editor</button>
+    <button id="btn-picture" type="button" title="Save a picture of the sky (X)">Picture</button>
+    <button id="btn-clip" type="button" title="Record a 10-second clip (R)">Clip</button>
+    <button id="btn-history" type="button" title="Songs played (H)">History</button>
     <button id="btn-settings" type="button" title="Settings (S)">Settings</button>
     <button id="btn-spike" type="button" title="Timing and source diagnostics (D)">Diagnostics</button>
     <button id="btn-disconnect" type="button" hidden>Disconnect</button>
   </nav>
 
   <aside id="spike" class="panel" hidden></aside>
+  <aside id="history" class="panel" hidden aria-label="History"></aside>
   <aside id="settings" class="panel settings" hidden aria-label="Settings"></aside>
   <aside id="editor" class="panel editor" hidden aria-label="Sync editor"></aside>
   <div id="toast" class="toast" role="status" hidden></div>

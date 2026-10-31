@@ -27,6 +27,11 @@ import { albumPalette } from './palette.js';
 import { preloadCover } from './covers.js';
 import { findCover } from './cover-search.js';
 import { FrameStats } from './perf.js';
+import { Caption } from './caption.js';
+import { History, songMapThumb, MIN_PLAY_MS } from './history.js';
+import { HistoryPanel } from './history-panel.js';
+import { savePicture, recordClip, canRecord, CLIP_SECONDS } from './export.js';
+import { translateLines, looksEnglish } from './translate.js';
 
 const $ = (id) => document.getElementById(id);
 // The desktop app's bridge (electron/preload.cjs), or null in a normal browser.
@@ -58,6 +63,8 @@ watchErrors();
 const renderer = new Renderer($('sky'));
 const frameStats = (app.frameStats = new FrameStats());
 const spike = new SpikePanel($('spike'), app);
+const history = new History({ get: cache.getValue, put: cache.putValue });
+const historyPanel = new HistoryPanel($('history'), { history });
 const latency = new sync.DisplayLatency();
 
 // Diagnostics → Copy report.
@@ -116,6 +123,7 @@ const settingsPanel = new SettingsPanel($('settings'), {
 // ---- player: the no-lyrics scene and the control bar ---------------------------
 
 const nowPlaying = new NowPlaying($('np'), { onRetry: retryLyrics });
+const caption = new Caption($('caption')); // romanized / translated line under the lyrics
 const bar = new PlayerBar($('player'), {
   previous: () => control.previous(),
   playPause: () => control.playPause(),
@@ -196,11 +204,12 @@ function applyVisuals() {
     nebula: g('nebula'),
     shootingStars: g('shootingStars'),
     emotion: g('emotion'),
-    transparent: app.desktop?.style === 'overlay',
+    transparent: app.desktop?.style === 'overlay' || app.desktop?.style === 'mini',
     palette: app.palette,
     art: app.track?.artLarge || app.track?.art || null,
   });
   nowPlaying.setStill(Boolean(g('reduceMotion')));
+  caption.setOptions({ romanize: g('romanize'), translate: g('translate') });
   updateCorner();
 }
 
@@ -217,11 +226,12 @@ loadSceneChoices();
 
 function displayMode() {
   const style = app.desktop?.style;
-  if (style === 'overlay') return 'overlay';
+  if (style === 'overlay' || style === 'mini') return 'overlay';
   return style === 'fullscreen' || document.fullscreenElement ? 'fullscreen' : 'window';
 }
 
-const activeScene = (mode = displayMode()) => (forcedScene && validScene(forcedScene, mode) === forcedScene ? forcedScene : app.randomPick) || sceneChoice[mode];
+// the mini widget has room for one line, so it always shows karaoke
+const activeScene = (mode = displayMode()) => (app.desktop?.style === 'mini' ? 'karaoke' : forcedScene && validScene(forcedScene, mode) === forcedScene ? forcedScene : app.randomPick) || sceneChoice[mode];
 
 // V: the next scene. It becomes this display mode's favorite, or, in random mode, just this song's scene.
 function cycleScene() {
@@ -246,17 +256,22 @@ function pickSceneForSong(track) {
 function applyDesktop(info) {
   const prev = app.desktop;
   app.desktop = info;
-  const overlay = info.style === 'overlay';
+  const mini = info.style === 'mini';
+  const overlay = info.style === 'overlay' || mini;
   const root = document.documentElement;
   root.classList.toggle('overlay', overlay);
+  root.classList.toggle('mini', mini);
   root.classList.toggle('click-through', overlay && info.overlay.clickThrough);
   root.style.setProperty('--backdrop', String(info.overlay.backdrop));
   $('grip').hidden = !overlay;
   $('btn-overlay').hidden = false;
-  $('btn-overlay').textContent = overlay ? 'Window' : 'Overlay';
+  $('btn-overlay').textContent = info.style === 'overlay' ? 'Window' : 'Overlay';
+  $('btn-mini').hidden = false;
+  $('btn-mini').textContent = mini ? 'Window' : 'Mini';
+  setMiniArt();
   $('btn-fullscreen').hidden = overlay;
   $('btn-fullscreen').textContent = info.style === 'fullscreen' ? 'Exit fullscreen' : 'Fullscreen';
-  if (prev && overlay && info.overlay.clickThrough !== prev.overlay.clickThrough) {
+  if (prev && info.style === 'overlay' && info.overlay.clickThrough !== prev.overlay.clickThrough) {
     toast(info.overlay.clickThrough ? `Click-through on · ${shortcut(info.shortcuts.toggleClickThrough)} turns it off` : 'Click-through off');
   }
   if (info.update?.available && !prev?.update?.available) toast(`Lyric Stars ${info.update.version} is available · Settings → Desktop app`);
@@ -278,7 +293,16 @@ function loadPalette(track) {
   });
 }
 
+// Mini widget: the cover on the left (the lyrics are drawn to its right by the usual scene).
+function setMiniArt() {
+  const art = $('mini-art');
+  const src = app.track?.art || '';
+  art.hidden = !src;
+  if (src && art.getAttribute('src') !== src) art.src = src;
+}
+
 function updateCorner() {
+  setMiniArt();
   const mode = settings.get('cornerInfo');
   const t = app.track;
   $('corner').hidden = mode === 'off' || !t;
@@ -303,7 +327,70 @@ function onSettingChange(key) {
     loadPalette(app.track);
     applyVisuals();
   } else if (key === 'fullFrameRate') fullFrameRate = settings.get('fullFrameRate');
-  else applyVisuals();
+  else if (key === 'translate' || key === 'translateTo') {
+    applyVisuals();
+    loadTranslation();
+  } else applyVisuals();
+}
+
+// ---- history and export ---------------------------------------------------
+
+// A song counts as played once it has had lyrics for a few seconds. One entry per play, with its constellation picture.
+let historyPlay = -1;
+function noteHistory() {
+  if (!app.timeline || !app.track || historyPlay === app.plays) return;
+  historyPlay = app.plays;
+  const { track, plays } = app;
+  const lines = app.timeline;
+  setTimeout(async () => {
+    if (app.track !== track || app.plays !== plays) return;
+    await history.record(track);
+    await history.setThumb(track.key, songMapThumb(lines, `${track.key}|1`));
+    if (historyPanel.visible) historyPanel.render();
+  }, MIN_PLAY_MS);
+}
+
+let recording = false;
+async function savePic() {
+  const name = await savePicture($('sky'), app.track);
+  toast(name ? `Picture saved: ${name}` : 'Could not save the picture');
+}
+async function saveClip() {
+  if (recording) return;
+  if (!canRecord()) return toast('This browser cannot record video');
+  recording = true;
+  $('btn-clip').textContent = 'Recording…';
+  toast(`Recording ${CLIP_SECONDS} seconds…`);
+  const name = await recordClip($('sky'), app.track);
+  recording = false;
+  $('btn-clip').textContent = 'Clip';
+  toast(name ? `Clip saved: ${name}` : 'Could not record the clip');
+}
+$('btn-picture').addEventListener('click', savePic);
+$('btn-clip').addEventListener('click', saveClip);
+$('btn-history').addEventListener('click', () => historyPanel.toggle());
+
+// ---- translated lyrics ---------------------------------------------------
+
+// Looks the song up once (see translate.js), keeps it on disk, and hands it to the caption. Never blocks the lyrics.
+let translationSeq = 0;
+async function loadTranslation() {
+  const seq = ++translationSeq;
+  caption.setTranslation(null);
+  const timeline = app.timeline;
+  const track = app.track;
+  const to = settings.get('translateTo');
+  if (!settings.get('translate') || !timeline || !track) return;
+  const texts = timeline.map((l) => l.text || '');
+  if (to === 'en' && looksEnglish(texts)) return;
+  const key = `translation:${track.key}:${to}`;
+  const saved = await cache.getValue(key);
+  if (seq !== translationSeq) return;
+  if (saved?.lines?.length === texts.length) return caption.setTranslation(saved.lines);
+  const lines = await translateLines(texts, to, { shouldStop: () => seq !== translationSeq });
+  if (seq !== translationSeq || !lines) return;
+  caption.setTranslation(lines);
+  cache.putValue(key, { savedAt: Date.now(), lines }).catch(() => {});
 }
 
 // ---- sources -------------------------------------------------------------
@@ -384,6 +471,7 @@ function onSample(sample) {
 
 function onTrackChange(track) {
   app.track = track;
+  caption.setTimeline(null);
   app.plays++;
   pickSceneForSong(track);
   nowPlaying.busy = false;
@@ -461,6 +549,9 @@ function rebuildTimeline() {
   if (app.record?.ownLyrics) app.lyrics = { ...app.lyrics, status: 'synced', own: true };
   app.timeline = lines ? buildTimeline(lines, { trackDurationMs: app.track?.durationMs }) : null;
   renderer.setTimeline(app.timeline, `${app.track?.key}|${app.plays}`);
+  caption.setTimeline(app.timeline);
+  loadTranslation();
+  noteHistory();
   editor.paint();
   updateView();
 }
@@ -691,6 +782,7 @@ function toggleFullscreen() {
 $('btn-mode').addEventListener('click', toggleMode);
 $('btn-fullscreen').addEventListener('click', toggleFullscreen);
 $('btn-overlay').addEventListener('click', () => desktop?.toggleOverlay());
+$('btn-mini').addEventListener('click', () => desktop?.toggleMini());
 $('btn-wrong').addEventListener('click', rejectCurrentLyrics);
 $('btn-spike').addEventListener('click', toggleSpike);
 $('btn-editor').addEventListener('click', toggleEditor);
@@ -730,13 +822,18 @@ window.addEventListener('keydown', (e) => {
   } else if (e.code === 'Backslash') nudgeSongOffset(null);
   else if (k === 'f') toggleFullscreen();
   else if (k === 'o' && desktop) desktop.toggleOverlay();
+  else if (k === 'n' && desktop) desktop.toggleMini();
   else if (k === 'm') toggleMode();
   else if (k === 'v') cycleScene();
   else if (k === 'd') toggleSpike();
   else if (k === 'e') toggleEditor();
   else if (k === 's') settingsPanel.toggle();
-  else if (k === 'escape' && (settingsPanel.visible || editor.visible || spike.visible)) {
+  else if (k === 'h') historyPanel.toggle();
+  else if (k === 'x') savePic();
+  else if (k === 'r') saveClip();
+  else if (k === 'escape' && (settingsPanel.visible || editor.visible || spike.visible || historyPanel.visible)) {
     if (settingsPanel.visible) settingsPanel.toggle();
+    if (historyPanel.visible) historyPanel.toggle();
     if (editor.visible) editor.toggle();
     if (spike.visible) spike.toggle();
   }
@@ -796,6 +893,7 @@ function frame(now) {
   if (frameCount++ % stride === 0 && renderer.draw(drawPosition(), { mode: app.mode, playing: app.clock.playing, now, scene: activeScene(), displayMode: displayMode() })) frameStats.add(now, performance.now() - t0);
   if (renderer.sceneId !== shownScene) document.documentElement.dataset.scene = shownScene = renderer.sceneId;
   const position = app.clock.position();
+  caption.frame(drawPosition());
   nowPlaying.frame(now, position);
   bar.frame(position, app.track?.durationMs, app.clock.playing);
   spike.frame(position);

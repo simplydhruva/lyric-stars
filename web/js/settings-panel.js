@@ -3,6 +3,7 @@
 import { settings } from './settings.js';
 import { THEMES, FONTS } from './theme.js';
 import { formatOffset } from './sync.js';
+import { LANGUAGES } from './translate.js';
 import { SCENES, DISPLAY_MODES, sceneSettingKey, validScene } from './scenes/index.js';
 
 const esc = (v) =>
@@ -81,6 +82,11 @@ export class SettingsPanel {
       <label class="check"><input type="checkbox" name="backgroundStars"${g('backgroundStars') ? ' checked' : ''}> Background stars</label>
       <label class="check"><input type="checkbox" name="reduceMotion"${g('reduceMotion') ? ' checked' : ''}> Reduce motion (no drift, twinkle or pop)</label>
       <label class="check"><input type="checkbox" name="fullFrameRate"${g('fullFrameRate') ? ' checked' : ''}> Match a fast screen's refresh rate (smoother on 120 Hz+, uses more power)</label>
+      <h3>Lyric text</h3>
+      <label class="check"><input type="checkbox" name="romanize"${g('romanize') ? ' checked' : ''}> Show Korean, Japanese (kana), Russian and Greek lyrics in Latin letters (works offline)</label>
+      <label class="check"><input type="checkbox" name="translate"${g('translate') ? ' checked' : ''}> Show a translation under each line</label>
+      <p>Translation sends the song's lyric text to the free MyMemory service (api.mymemory.translated.net), once per song. It may be slow or limited; if it fails the lyrics just show without it.</p>
+      <label class="field">Translate into <select name="translateTo">${LANGUAGES.map(([k, n]) => `<option value="${k}"${k === g('translateTo') ? ' selected' : ''}>${n}</option>`).join('')}</select></label>
       <h3>Corner</h3>
       ${radios('cornerInfo', [['off', 'Nothing'], ['title', 'Song title'], ['art', 'Album art and title']], g('cornerInfo'))}
       ${this._desktopHtml()}

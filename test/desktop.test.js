@@ -110,3 +110,16 @@ test('update check: prereleases, no releases and errors', async () => {
   assert.equal((await checkForUpdate({ repo: 'me/ls', currentVersion: '0.1.0', fetchFn: reply(404, {}) })).available, false);
   await assert.rejects(checkForUpdate({ repo: 'me/ls', currentVersion: '0.1.0', fetchFn: reply(500, {}) }));
 });
+
+test('mini widget: small, bottom right corner, remembered, and kept on screen', () => {
+  const primary = { id: 1, primary: true, workArea: { x: 0, y: 0, width: 1920, height: 1040 } };
+  const m = placeWindow('mini', null, [primary]);
+  assert.deepEqual(m, { x: 1920 - 420 - 24, y: 1040 - 112 - 24, width: 420, height: 112 });
+  const saved = { x: 100, y: 100, width: 420, height: 112 };
+  assert.deepEqual(placeWindow('mini', saved, [primary]), saved);
+  assert.deepEqual(placeWindow('mini', { x: 5000, y: 5000, width: 420, height: 112 }, [primary]), m); // monitor unplugged
+  const s = normalizeState({ style: 'mini', mini: { bounds: saved } });
+  assert.equal(s.style, 'mini');
+  assert.deepEqual(s.mini.bounds, saved);
+  assert.equal(normalizeState({ style: 'mini', mini: { bounds: { x: 'a' } } }).mini.bounds, null);
+});

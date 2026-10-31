@@ -41,7 +41,7 @@ const TYPES = {
 
 const CSP = [
   "default-src 'self'",
-  "connect-src 'self' https://api.spotify.com https://accounts.spotify.com https://lrclib.net",
+  "connect-src 'self' https://api.spotify.com https://accounts.spotify.com https://lrclib.net https://api.mymemory.translated.net",
   "img-src 'self' data: https://i.scdn.co",
   "style-src 'self'",
   "script-src 'self'",

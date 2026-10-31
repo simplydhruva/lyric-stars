@@ -72,6 +72,7 @@ function info() {
     style: state.style,
     version: app.getVersion(),
     overlay: { ...state.overlay },
+    mini: { ...state.mini },
     openToTray: state.openToTray,
     startWithWindows: app.isPackaged && app.getLoginItemSettings().openAtLogin,
     canStartWithWindows: app.isPackaged,
@@ -157,8 +158,8 @@ function displays() {
 }
 
 function createWindow(style, url, { replacing = null } = {}) {
-  const overlay = style === 'overlay';
-  const kind = overlay ? 'overlay' : 'window';
+  const overlay = style === 'overlay' || style === 'mini'; // both are transparent, frameless and on top
+  const kind = style === 'mini' ? 'mini' : overlay ? 'overlay' : 'window';
   const bounds = placeWindow(kind, state[kind].bounds, displays());
   const w = new BrowserWindow({
     ...bounds,
@@ -194,7 +195,7 @@ function createWindow(style, url, { replacing = null } = {}) {
 
   // move/resize also fire for moves made by code and by Windows snapping.
   const remember = () => {
-    if (w === win) rememberBounds(w, overlay);
+    if (w === win) rememberBounds(w);
   };
   for (const ev of ['move', 'resize', 'maximize', 'unmaximize']) w.on(ev, remember);
   w.on('enter-full-screen', () => {
@@ -227,9 +228,9 @@ function createWindow(style, url, { replacing = null } = {}) {
   return w;
 }
 
-function rememberBounds(w, overlay = state.style === 'overlay') {
+function rememberBounds(w, style = state.style) {
   if (w.isDestroyed() || w.isFullScreen() || w.isMinimized()) return;
-  if (overlay) state.overlay.bounds = w.getBounds();
+  if (style === 'overlay' || style === 'mini') state[style].bounds = w.getBounds();
   else {
     state.window.maximized = w.isMaximized();
     state.window.bounds = w.getNormalBounds();
@@ -258,11 +259,16 @@ function setStyle(style) {
     return showWindow();
   }
   const from = state.style;
-  if (from !== 'fullscreen') rememberBounds(win, from === 'overlay');
-  if (from !== 'fullscreen') state.previousStyle = from;
+  if (from !== 'fullscreen') rememberBounds(win, from);
+  if (from !== 'fullscreen' && from !== 'mini') state.previousStyle = from;
   state.style = style;
   saveState();
-  if ((from === 'overlay') !== (style === 'overlay')) {
+  const floating = (s) => s === 'overlay' || s === 'mini';
+  if (floating(from) && floating(style)) {
+    // Overlay and mini share one transparent window; only its size and place change.
+    win.setBounds(placeWindow(style, state[style].bounds, displays()));
+    applyClickThrough();
+  } else if (floating(from) !== floating(style)) {
     // Transparency is fixed when a window is made, so overlay gets its own window.
     // The page reloads; lyrics come back from the cache and playback resyncs.
     const old = win;
@@ -275,6 +281,10 @@ function setStyle(style) {
 
 function toggleFullscreen() {
   setStyle(state.style === 'fullscreen' ? state.previousStyle : 'fullscreen');
+}
+
+function toggleMini() {
+  setStyle(state.style === 'mini' ? (state.previousStyle === 'fullscreen' ? 'window' : state.previousStyle) : 'mini');
 }
 
 function toggleOverlay() {
@@ -306,7 +316,7 @@ function showWindow() {
     return buildTrayMenu();
   }
   if (win.isMinimized()) win.restore();
-  if (state.style === 'overlay') win.showInactive();
+  if (state.style === 'overlay' || state.style === 'mini') win.showInactive();
   else {
     win.show();
     win.focus();
@@ -366,6 +376,7 @@ function registerIpc() {
   on('ls:style', (_e, style) => setStyle(style));
   on('ls:toggle-fullscreen', () => toggleFullscreen());
   on('ls:toggle-overlay', () => toggleOverlay());
+  on('ls:toggle-mini', () => toggleMini());
   on('ls:overlay', (_e, opts) => setOverlay(opts && typeof opts === 'object' ? opts : {}));
   on('ls:option', (_e, key, value) => setOption(key, value));
   on('ls:open-release', () => update?.url && openExternal(update.url));
@@ -387,7 +398,7 @@ function setOption(key, value) {
 function onLoginHandoff(params) {
   if (!win) return false;
   win.webContents.send('ls:login', params);
-  if (state.style === 'overlay') win.showInactive();
+  if (state.style === 'overlay' || state.style === 'mini') win.showInactive();
   else showWindow();
   return true;
 }
@@ -412,6 +423,7 @@ function buildTrayMenu() {
     style('window', 'Window'),
     style('fullscreen', 'Fullscreen'),
     style('overlay', 'Overlay'),
+    style('mini', 'Mini widget'),
     {
       label: 'Click-through overlay',
       type: 'checkbox',

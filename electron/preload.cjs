@@ -26,6 +26,7 @@ if (ORIGIN && location.origin === ORIGIN) {
     setStyle: (style) => ipcRenderer.send('ls:style', style),
     toggleFullscreen: () => ipcRenderer.send('ls:toggle-fullscreen'),
     toggleOverlay: () => ipcRenderer.send('ls:toggle-overlay'),
+    toggleMini: () => ipcRenderer.send('ls:toggle-mini'),
     setOverlay: (opts) => ipcRenderer.send('ls:overlay', opts),
     setOption: (key, value) => ipcRenderer.send('ls:option', key, value),
     checkForUpdates: () => ipcRenderer.invoke('ls:check-updates'),

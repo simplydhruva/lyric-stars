@@ -50,6 +50,9 @@ const DEFAULTS = {
   spread: 100, // 0..100: how much of the screen each line's stars may use
   chaos: 50, // 0..100: extra criss-cross links and longer jumps between stars
   previewNext: true, // constellation: faint dots show where the next line's stars will appear
+  romanize: true, // Korean, Japanese kana, Russian and Greek lyrics also shown in Latin letters (offline)
+  translate: false, // translated line from a free web service; off because it sends the lyric text there
+  translateTo: 'en',
   nebula: true, // slow drifting colour clouds behind the stars
   shootingStars: true, // a streak across the sky in the gaps between lines
   emotion: true, // love, fire, night, rain and sun words get a small coloured glow (six scenes)

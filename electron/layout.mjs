@@ -1,6 +1,6 @@
 // Window placement rules, kept free of Electron so they can be tested in node.
 
-export const STYLES = ['window', 'fullscreen', 'overlay'];
+export const STYLES = ['window', 'fullscreen', 'overlay', 'mini'];
 
 export const DEFAULT_STATE = {
   style: 'window',
@@ -8,14 +8,16 @@ export const DEFAULT_STATE = {
   window: { bounds: null, maximized: false },
   fullscreen: { displayId: null },
   overlay: { bounds: null, opacity: 1, backdrop: 0.35, clickThrough: false },
+  mini: { bounds: null }, // the small corner widget
   openToTray: false,
 };
 
 const SIZES = {
   window: { width: 1100, height: 680, minWidth: 360, minHeight: 240 },
   overlay: { width: 760, height: 260, minWidth: 260, minHeight: 120 },
+  mini: { width: 420, height: 112, minWidth: 260, minHeight: 80 },
 };
-export const MIN_SIZE = { window: [SIZES.window.minWidth, SIZES.window.minHeight], overlay: [SIZES.overlay.minWidth, SIZES.overlay.minHeight] };
+export const MIN_SIZE = { window: [SIZES.window.minWidth, SIZES.window.minHeight], overlay: [SIZES.overlay.minWidth, SIZES.overlay.minHeight], mini: [SIZES.mini.minWidth, SIZES.mini.minHeight] };
 
 // Merges a saved state file over the defaults, dropping anything malformed.
 export function normalizeState(saved) {
@@ -31,6 +33,7 @@ export function normalizeState(saved) {
   if (Number.isFinite(o.opacity)) s.overlay.opacity = clamp(o.opacity, 0.3, 1);
   if (Number.isFinite(o.backdrop)) s.overlay.backdrop = clamp(o.backdrop, 0, 0.85);
   s.overlay.clickThrough = o.clickThrough === true;
+  if (isRect(saved.mini?.bounds)) s.mini.bounds = saved.mini.bounds;
   s.openToTray = saved.openToTray === true;
   return s;
 }
@@ -69,6 +72,7 @@ export function placeWindow(kind, saved, displays) {
   const width = Math.min(size.width, wa.width);
   const height = Math.min(size.height, wa.height);
   const x = Math.round(wa.x + (wa.width - width) / 2);
+  if (kind === 'mini') return { x: wa.x + wa.width - width - 24, y: wa.y + wa.height - height - 24, width, height }; // bottom right corner
   const y = kind === 'overlay' ? Math.round(wa.y + wa.height - height - wa.height * 0.08) : Math.round(wa.y + (wa.height - height) / 2);
   return { x, y, width, height };
 }
