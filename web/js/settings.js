@@ -38,6 +38,10 @@ const DEFAULTS = {
   source: 'auto', // 'auto' | 'spotify' | 'media-session'
   noLogin: false, // chose "Use without logging in": Automatic then follows this PC only
   mode: 'word', // 'word' | 'line'
+  sceneWindow: 'constellation', // which scene each display mode shows (V cycles it); see scenes/index.js
+  sceneFullscreen: 'constellation',
+  sceneOverlay: 'karaoke',
+  sceneRandom: false, // pick a different scene for every song
   theme: 'gold', // 'gold' | 'ice' | 'rose' | 'custom'
   customColor: '#f4c76b',
   albumColors: false, // tint each song's sky from its album art

@@ -1,5 +1,6 @@
 // Demo source for testing visuals without Spotify: open /?demo
 // Optional: /?demo&title=Yellow&artist=Coldplay&album=Parachutes&duration=268&start=20&art=https://i.scdn.co/image/...
+// Add &paused to hold at the start position (the visual checks use this).
 // There is no audio, so the clock simply runs from the start position.
 export class DemoSource {
   constructor({ onSample, onProblem }) {
@@ -19,7 +20,7 @@ export class DemoSource {
     };
     this.track.artLarge = this.track.art;
     this.startPos = Number(q.get('start') || 0) * 1000;
-    this.playing = true;
+    this.playing = !q.has('paused');
     this.pos = this.startPos;
     this.at = performance.now();
   }

@@ -209,6 +209,8 @@ body.controls-hidden #chips .subtle { opacity: 0; pointer-events: none; }
   max-height: calc(100vh - 130px);
 }
 .settings h3 { font-size: 12px; font-weight: 600; color: var(--muted); margin: 14px 0 6px; }
+.settings h3 .hint { font-weight: 400; opacity: 0.7; }
+.settings .field-label { font-size: 12px; color: var(--muted); margin: 8px 0 4px; }
 .settings .seg { display: flex; flex-wrap: wrap; gap: 4px; }
 .settings .seg input { position: absolute; opacity: 0; pointer-events: none; }
 .settings .seg span {

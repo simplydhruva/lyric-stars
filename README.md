@@ -17,7 +17,7 @@ npm run harness  # timing report for the reference songs (add -- --update-baseli
 
 Open http://127.0.0.1:5173/ (localhost redirects there, because Spotify only accepts loopback IPs).
 
-- **Keys:** `S` settings, `F` fullscreen, `O` overlay (desktop app), `M` word/line mode, `D` diagnostics, `E` sync editor, `Esc` closes panels,
+- **Keys:** `S` settings, `F` fullscreen, `O` overlay (desktop app), `M` word/line mode, `V` switches scene, `D` diagnostics, `E` sync editor, `Esc` closes panels,
   `[` / `]` lyrics earlier / later for this song (50 ms; hold Shift for 10 ms).
 - **Demo without Spotify:** http://127.0.0.1:5173/?demo&start=30 plays Coldplay "Yellow" with no audio.
   `P` pauses, arrow keys seek 10 s. Other songs: `?demo&title=...&artist=...&album=...&duration=<seconds>`.
@@ -101,6 +101,10 @@ Diagnostics (`D`) shows which source and player are in use.
 
 ## Look
 
+- **Scenes (`V`):** *Constellation* (the stars) and *Karaoke* (centered lines, a gold fill sweeping across each word between
+  its start and end, the previous and next lines faint above and below). Your pick is remembered separately for window,
+  fullscreen and overlay; the overlay starts on Karaoke. Settings has a "Random scene each song" option; with it on, `V`
+  changes only the current song. Scenes are pure functions of the playback position, so seek and pause never leave stale animation.
 - **Settings (`S`):** lyric source, word/line mode, theme (Gold, Ice, Rose or a custom color), album colors,
   font (system fonts only), background stars, reduce motion, corner title/art, global offset, lyric cache, disconnect.
 - **Album colors** (off by default): two or three colors are read from the 64 px cover; grey or
@@ -137,7 +141,10 @@ web/js/sync.js            per-song and global offsets, display latency
 web/js/corrections.js     your timings: merge, import, export (also the reference-song format)
 web/js/editor.js          tap-to-sync editor
 web/js/harness.js         scores the estimator; tools/harness.mjs runs it on test/reference
-web/js/renderer.js        canvas constellation
+web/js/renderer.js        canvas host: sizing, background, idle-frame skipping, hands lyrics to the active scene
+web/js/scenes/            index.js (registry, frame object), constellation.js, karaoke.js, karaoke-layout.js (pure maths)
+tools/visual.mjs          pixel check: renders fixed frames to PNGs (--out) or compares against them (--compare)
+tools/lib/headless.mjs    shared headless-browser helpers for smoke.mjs and visual.mjs
 web/js/background.js      nebula, drifting and twinkling background stars
 web/js/theme.js           themes, fonts, album palette extraction (palette.js loads the image)
 web/js/settings-panel.js  settings panel

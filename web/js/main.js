@@ -10,6 +10,7 @@ import { fetchLyrics, LyricsError } from './lyrics/lrclib.js';
 import * as cache from './cache.js';
 import { buildTimeline, timelineKind } from './timing.js';
 import { Renderer } from './renderer.js';
+import { DISPLAY_MODES, nextScene, randomScene, sceneName, sceneSettingKey, validScene } from './scenes/index.js';
 import { STATES, SCENE_LABELS, fill } from './states.js';
 import { NowPlaying } from './now-playing.js';
 import { PlayerBar } from './player-bar.js';
@@ -46,8 +47,10 @@ export const app = {
   authMessage: '',
   mode: settings.get('mode'),
   loadSeq: 0,
-  plays: Math.floor(Math.random() * 1e9), // counts track changes; seeds each play's sky
+  // Counts track changes; seeds each play's sky. `?seed=N` pins it so the visual checks can repeat a layout.
+  plays: Number(new URLSearchParams(location.search).get('seed')) || Math.floor(Math.random() * 1e9),
   retryTimer: null,
+  randomPick: null, // scene picked for this song (random mode, or V while random is on)
   desktop: desktop?.info() || null, // { style, overlay, update, ... } from the desktop shell
 };
 
@@ -187,9 +190,48 @@ function applyVisuals() {
     spread: g('spread'),
     chaos: g('chaos'),
     transparent: app.desktop?.style === 'overlay',
+    palette: app.palette,
   });
   nowPlaying.setStill(Boolean(g('reduceMotion')));
   updateCorner();
+}
+
+// ---- scenes ----------------------------------------------------------------
+
+// ?scene=karaoke shows one scene whatever the settings say, until V is pressed (for the visual checks).
+let forcedScene = new URLSearchParams(location.search).get('scene');
+const sceneChoice = {}; // display mode -> scene id, read from settings when they change (not every frame)
+
+function loadSceneChoices() {
+  for (const m of DISPLAY_MODES) sceneChoice[m] = validScene(settings.get(sceneSettingKey(m)), m);
+}
+loadSceneChoices();
+
+function displayMode() {
+  const style = app.desktop?.style;
+  if (style === 'overlay') return 'overlay';
+  return style === 'fullscreen' || document.fullscreenElement ? 'fullscreen' : 'window';
+}
+
+const activeScene = (mode = displayMode()) => (forcedScene && validScene(forcedScene, mode) === forcedScene ? forcedScene : app.randomPick) || sceneChoice[mode];
+
+// V: the next scene. It becomes this display mode's favorite, or, in random mode, just this song's scene.
+function cycleScene() {
+  const mode = displayMode();
+  const next = nextScene(activeScene(mode));
+  forcedScene = null;
+  if (settings.get('sceneRandom')) app.randomPick = next;
+  else {
+    settings.set(sceneSettingKey(mode), next);
+    sceneChoice[mode] = next;
+    settingsPanel.render();
+  }
+  toast(`Scene: ${sceneName(next)}${settings.get('sceneRandom') ? ' (this song)' : ''}`);
+}
+
+// Random mode: a different scene for every song.
+function pickSceneForSong(track) {
+  app.randomPick = track && settings.get('sceneRandom') ? randomScene(activeScene()) : null;
 }
 
 // Desktop shell state: display style, overlay look, update notice.
@@ -245,6 +287,10 @@ function onSettingChange(key) {
   else if (key === 'mode') {
     app.mode = settings.get('mode');
     updateView();
+  } else if (key === 'sceneRandom') {
+    pickSceneForSong(app.track);
+  } else if (key.startsWith('scene')) {
+    loadSceneChoices();
   } else if (key === 'albumColors') {
     loadPalette(app.track);
     applyVisuals();
@@ -331,6 +377,7 @@ function onSample(sample) {
 function onTrackChange(track) {
   app.track = track;
   app.plays++;
+  pickSceneForSong(track);
   nowPlaying.busy = false;
   app.lyrics = null;
   app.timeline = null;
@@ -659,15 +706,19 @@ function disconnect() {
 }
 
 window.addEventListener('keydown', (e) => {
-  if (e.target.closest?.('input, textarea, select')) return;
   if (e.ctrlKey || e.altKey || e.metaKey) return;
   const k = e.key.toLowerCase();
+  // Typing in a field is left alone. A ticked checkbox or radio keeps focus, though, and letter keys
+  // (V, S...) should still work after clicking one in the settings panel; Space and arrows stay theirs.
+  const field = e.target.closest?.('input, textarea, select');
+  if (field && !(field.matches('input[type=checkbox], input[type=radio]') && k.length === 1 && k !== ' ')) return;
   if (e.code === 'BracketLeft' || e.code === 'BracketRight') {
     const step = e.shiftKey ? sync.FINE_STEP_MS : sync.OFFSET_STEP_MS;
     nudgeSongOffset(e.code === 'BracketLeft' ? step : -step);
   } else if (k === 'f') toggleFullscreen();
   else if (k === 'o' && desktop) desktop.toggleOverlay();
   else if (k === 'm') toggleMode();
+  else if (k === 'v') cycleScene();
   else if (k === 'd') toggleSpike();
   else if (k === 'e') toggleEditor();
   else if (k === 's') settingsPanel.toggle();
@@ -723,12 +774,14 @@ window.addEventListener('pointerdown', showControls);
 // ---- frame loop --------------------------------------------------------------
 
 let frameCount = 0;
+let shownScene = ''; // mirrored to <html data-scene> so tests and diagnostics can see which scene is up
 let fullFrameRate = settings.get('fullFrameRate');
 function frame(now) {
   latency.tick(now);
   const stride = fullFrameRate ? 1 : sync.frameStride(latency.refreshMs);
   const t0 = performance.now();
-  if (frameCount++ % stride === 0 && renderer.draw(drawPosition(), { mode: app.mode, playing: app.clock.playing, now })) frameStats.add(now, performance.now() - t0);
+  if (frameCount++ % stride === 0 && renderer.draw(drawPosition(), { mode: app.mode, playing: app.clock.playing, now, scene: activeScene(), displayMode: displayMode() })) frameStats.add(now, performance.now() - t0);
+  if (renderer.sceneId !== shownScene) document.documentElement.dataset.scene = shownScene = renderer.sceneId;
   const position = app.clock.position();
   nowPlaying.frame(now, position);
   bar.frame(position, app.track?.durationMs, app.clock.playing);

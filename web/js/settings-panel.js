@@ -3,6 +3,7 @@
 import { settings } from './settings.js';
 import { THEMES, FONTS } from './theme.js';
 import { formatOffset } from './sync.js';
+import { SCENES, DISPLAY_MODES, sceneSettingKey, validScene } from './scenes/index.js';
 
 const esc = (v) =>
   String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -54,6 +55,12 @@ export class SettingsPanel {
       <p>${esc(SOURCE_HELP[g('source')] || '')}</p>
       <h3>Show</h3>
       ${radios('mode', [['word', 'Word by word'], ['line', 'Line by line']], g('mode'))}
+      <h3>Scene <span class="hint">(V switches)</span></h3>
+      ${DISPLAY_MODES.map(
+        (m) => `<div class="field-label">${m === 'window' ? 'Window' : m === 'fullscreen' ? 'Fullscreen' : 'Overlay'}</div>
+      ${radios(sceneSettingKey(m), SCENES.map((s) => [s.id, s.name]), validScene(g(sceneSettingKey(m)), m))}`
+      ).join('')}
+      <label class="check"><input type="checkbox" name="sceneRandom"${g('sceneRandom') ? ' checked' : ''}> Random scene each song</label>
       <h3>Colors</h3>
       ${radios('theme', [...Object.entries(THEMES).map(([k, t]) => [k, t.name]), ['custom', 'Custom']], theme)}
       <label class="field"${theme === 'custom' ? '' : ' hidden'}>Custom color <input type="color" name="customColor" value="${esc(g('customColor'))}"></label>
