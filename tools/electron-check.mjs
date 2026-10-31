@@ -11,7 +11,10 @@ import { ROOT, sleep, waitFor, syncedEntry } from './lib/headless.mjs';
 
 const out = process.argv[2];
 if (out) mkdirSync(out, { recursive: true });
-const ELECTRON = path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe');
+// LYRICSTARS_EXE=<path to Lyric Stars.exe> checks an installed copy instead of the source tree.
+const INSTALLED = process.env.LYRICSTARS_EXE;
+const ELECTRON = INSTALLED || path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe');
+const APP_ARG = INSTALLED ? [] : ['.'];
 const PAGE_PORT = 9333;
 const MAIN_PORT = 9334;
 let bad = 0;
@@ -68,7 +71,7 @@ async function run(style) {
   mkdirSync(path.join(work, 'desktop'), { recursive: true });
   writeFileSync(path.join(work, 'desktop', 'desktop.json'), JSON.stringify({ style }));
   const start = '/?demo=&title=Electron+Check&artist=Check&duration=120&start=6&seed=7&scene=karaoke';
-  const proc = spawn(ELECTRON, ['.', `--remote-debugging-port=${PAGE_PORT}`, `--inspect=${MAIN_PORT}`], {
+  const proc = spawn(ELECTRON, [...APP_ARG, `--remote-debugging-port=${PAGE_PORT}`, `--inspect=${MAIN_PORT}`], {
     cwd: ROOT,
     stdio: 'ignore',
     env: { ...process.env, LYRICSTARS_PORT: '5210', LYRICSTARS_DATA: work, LYRICSTARS_START: start },

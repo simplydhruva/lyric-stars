@@ -9,7 +9,10 @@ import path from 'node:path';
 import { ROOT, sleep, waitFor } from './lib/headless.mjs';
 
 const BPM = Number(process.argv[2]) || 120;
-const ELECTRON = path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe');
+// LYRICSTARS_EXE=<path to Lyric Stars.exe> checks an installed copy instead of the source tree.
+const INSTALLED = process.env.LYRICSTARS_EXE;
+const ELECTRON = INSTALLED || path.join(ROOT, 'node_modules', 'electron', 'dist', 'electron.exe');
+const APP_ARG = INSTALLED ? [] : ['.'];
 const PAGE_PORT = 9335;
 let bad = 0;
 const check = (name, ok, detail = '') => {
@@ -75,7 +78,7 @@ mkdirSync(path.join(work, 'desktop'), { recursive: true });
 const wav = path.join(work, 'loop.wav');
 writeFileSync(wav, drumLoop(BPM, 24));
 const start = '/?demo=&title=Beat+Check&artist=Check&duration=120&start=6&seed=7&scene=constellation';
-const proc = spawn(ELECTRON, ['.', `--remote-debugging-port=${PAGE_PORT}`], {
+const proc = spawn(ELECTRON, [...APP_ARG, `--remote-debugging-port=${PAGE_PORT}`], {
   cwd: ROOT,
   stdio: 'ignore',
   env: { ...process.env, LYRICSTARS_PORT: '5211', LYRICSTARS_DATA: work, LYRICSTARS_START: start },
