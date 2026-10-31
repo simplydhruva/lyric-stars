@@ -1,5 +1,5 @@
-# Windows media-session probe (spike for milestone 1).
-# Prints one JSON line per tick describing the Spotify desktop session.
+# Windows media-session probe: fallback for native/media-helper.cs when it isn't built.
+# Prints one JSON line per tick: Spotify if open, else the playing (or current) player.
 # Run by server.js; also runnable by hand:  powershell -NoProfile -File tools\smtc-probe.ps1
 param([int]$IntervalMs = 200)
 
@@ -31,7 +31,13 @@ while ($true) {
     $tick++
     $out = @{ ok = $true; nowMs = [DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds() }
     try {
-        $session = $manager.GetSessions() | Where-Object { $_.SourceAppUserModelId -like '*Spotify*' } | Select-Object -First 1
+        $sessions = @($manager.GetSessions())
+        $session = $sessions | Where-Object { $_.SourceAppUserModelId -like '*Spotify*' } | Select-Object -First 1
+        if ($null -eq $session) {
+            $current = $manager.GetCurrentSession()
+            $playing = $sessions | Where-Object { "$($_.GetPlaybackInfo().PlaybackStatus)" -eq 'Playing' } | Select-Object -First 1
+            $session = if ($null -ne $current -and "$($current.GetPlaybackInfo().PlaybackStatus)" -eq 'Playing') { $current } elseif ($null -ne $playing) { $playing } else { $current }
+        }
         if ($null -eq $session) {
             $out.session = $false
         } else {
@@ -39,11 +45,12 @@ while ($true) {
             $tl = $session.GetTimelineProperties()
             $info = $session.GetPlaybackInfo()
             # Media properties are slower to read: refresh on timeline change and about once a second.
-            $titleKey = "$($tl.EndTime.Ticks)|$($tl.StartTime.Ticks)"
+            $titleKey = "$($session.SourceAppUserModelId)|$($tl.EndTime.Ticks)|$($tl.StartTime.Ticks)"
             if ($titleKey -ne $lastTitleKey -or $null -eq $props -or ($tick % 5) -eq 0) {
                 $props = Await ($session.TryGetMediaPropertiesAsync()) $propsType
                 $lastTitleKey = $titleKey
             }
+            $out.app = $session.SourceAppUserModelId
             $out.title = $props.Title
             $out.artist = $props.Artist
             $out.album = $props.AlbumTitle

@@ -1,9 +1,9 @@
 // Tiny local server: serves web/, stores the lyric cache on disk, and runs the
-// Windows media-session probe. Listens on 127.0.0.1 only.
+// Windows media-session helper. Listens on 127.0.0.1 only.
 // `npm start` runs it directly; the desktop app imports startServer().
 import http from 'node:http';
 import fs from 'node:fs/promises';
-import { createReadStream } from 'node:fs';
+import { createReadStream, existsSync } from 'node:fs';
 import path from 'node:path';
 import crypto from 'node:crypto';
 import os from 'node:os';
@@ -22,6 +22,8 @@ export const DEFAULT_DATA_DIR =
 let PORT = DEFAULT_PORT;
 let CACHE_DIR;
 let TIMINGS_DIR; // user timings are kept apart so clearing the lyric cache never loses them
+// The native helper (npm run helper) when built; the PowerShell probe otherwise.
+let MEDIA_HELPER = path.join(ROOT, 'native', 'bin', 'lyricstars-media.exe');
 let PROBE_SCRIPT = path.join(ROOT, 'tools', 'smtc-probe.ps1');
 let ALLOWED_HOSTS;
 let onLoginHandoff = null; // set by the desktop app
@@ -118,18 +120,24 @@ async function cacheStats() {
   return { count, bytes, dir: CACHE_DIR };
 }
 
-// ---- media-session probe -----------------------------------------------
+// ---- media-session helper -----------------------------------------------
 
-const probe = { child: null, latest: null, lastRequest: 0, error: null };
+const probe = { child: null, kind: null, latest: null, lastRequest: 0, error: null };
 
 function ensureProbe() {
   probe.lastRequest = Date.now();
   if (probe.child || process.platform !== 'win32') return;
-  const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', PROBE_SCRIPT], {
-    windowsHide: true,
-    stdio: ['ignore', 'pipe', 'pipe'],
-  });
+  const native = existsSync(MEDIA_HELPER);
+  // The helper exits when its stdin closes, so it never outlives this process.
+  const child = native
+    ? spawn(MEDIA_HELPER, [], { windowsHide: true, stdio: ['pipe', 'pipe', 'pipe'] })
+    : spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', PROBE_SCRIPT], {
+        windowsHide: true,
+        stdio: ['ignore', 'pipe', 'pipe'],
+      });
   probe.child = child;
+  probe.kind = native ? 'native' : 'powershell';
+  child.on('error', (e) => (probe.error = String(e.message)));
   readline.createInterface({ input: child.stdout }).on('line', (line) => {
     try {
       probe.latest = JSON.parse(line);
@@ -216,7 +224,7 @@ async function handle(req, res) {
       if (p === '/api/media-session') {
         if (process.platform !== 'win32') return send(res, 501, { ok: false, error: 'Windows only' });
         ensureProbe();
-        return send(res, 200, probe.latest || { ok: false, starting: true, error: probe.error });
+        return send(res, 200, { ...(probe.latest || { ok: false, starting: true, error: probe.error }), helper: probe.kind });
       }
       return send(res, 404, 'unknown api');
     }
@@ -234,11 +242,12 @@ export function stopProbe() {
 }
 
 // Resolves with the listening server; rejects with code EADDRINUSE if the port is taken.
-export function startServer({ port = DEFAULT_PORT, dataDir = DEFAULT_DATA_DIR, probeScript, onLoginHandoff: handoff } = {}) {
+export function startServer({ port = DEFAULT_PORT, dataDir = DEFAULT_DATA_DIR, mediaHelper, probeScript, onLoginHandoff: handoff } = {}) {
   PORT = port;
   onLoginHandoff = handoff || null;
   CACHE_DIR = path.join(dataDir, 'cache');
   TIMINGS_DIR = path.join(dataDir, 'timings');
+  if (mediaHelper) MEDIA_HELPER = mediaHelper;
   if (probeScript) PROBE_SCRIPT = probeScript;
   ALLOWED_HOSTS = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`]);
   const server = http.createServer(handle);

@@ -31,18 +31,38 @@ npm install      # Electron and electron-builder (dev only)
 npm run desktop  # run the desktop app from source
 npm run dist     # build dist/Lyric-Stars-Setup-<version>.exe (no Node needed to run it)
 npm run icons    # redraw electron/icons/*.png
+npm run helper   # rebuild native/bin/lyricstars-media.exe (desktop and dist do this when needed)
 ```
 
 - The same page, served by the same local server on 127.0.0.1:5173, inside Electron. The page gets no Node access, only a
   small `window.lyricStars` bridge. Navigation is locked to that origin; only Spotify, the Spotify developer site and GitHub open in the browser.
 - **Styles:** window, fullscreen (`F`) and overlay (`O`): always on top, see-through, with opacity, background dim and
-  click-through. Each style remembers its own size, place and monitor in `%APPDATA%LyricStarsdesktopdesktop.json`.
+  click-through. Each style remembers its own size, place and monitor in `%APPDATA%\LyricStars\desktop\desktop.json`.
 - **Shortcuts (any app):** `Ctrl+Alt+L` show or hide, `Ctrl+Alt+K` click-through. Tray: show, styles, click-through,
   start with Windows, open to tray (no window or drawing until shown), update check, quit. Closing the window quits.
 - **Login:** opens the system browser. That tab hands the code back to the app via `POST /api/login-handoff`; the PKCE verifier never
-  leaves the app. Tokens are encrypted with Electron safeStorage (DPAPI) in `desktop	okens.bin`.
+  leaves the app. Tokens are encrypted with Electron safeStorage (DPAPI) in `desktop\tokens.bin`.
 - **Updates:** set `UPDATE_REPO` in `web/config.js`. The app then reads the latest GitHub release once a day and links to it. It never downloads code.
 - **Testing overrides:** `LYRICSTARS_PORT`, `LYRICSTARS_DATA`, `LYRICSTARS_START` (start path, e.g. `/?demo&start=30`).
+
+## Sources
+
+Settings → **Lyrics from**:
+
+- **Automatic** (default): the Spotify app on this PC when it plays (read locally: no login, no API limits, the most
+  accurate position), your Spotify account when music plays elsewhere (phone, speaker), and any other player on this PC
+  as a last resort. A better source takes over after it has played for 1.5 s; within one song the lyrics stay loaded.
+  Without a login (first-run **Use without logging in**, also offered when Spotify says the account is not on the user list)
+  it follows this PC only.
+- **Spotify account:** the Web API, any device.
+- **This PC only:** the Windows media session. Spotify first; otherwise the playing browser tab or app. Video titles are tidied
+  ("Coldplay - Yellow (Official Video)" by "ColdplayVEVO" → Yellow · Coldplay) and the usual match rules still apply.
+  A paused browser tab is ignored unless it was just playing.
+
+The media session is read by `native/media-helper.cs`, compiled with the C# compiler built into Windows
+(.NET Framework 4, no SDK) into a 9 KB exe that prints one JSON line per tick and exits when its stdin closes. It is
+optional: without it the server falls back to `tools/smtc-probe.ps1` (slower to start, same output).
+Diagnostics (`D`) shows which source and player are in use.
 
 ## Timing
 
@@ -73,17 +93,19 @@ npm run icons    # redraw electron/icons/*.png
 ## Layout
 
 ```
-server.js                 local server: static files, disk cache API, media-session probe, login hand-off
+server.js                 local server: static files, disk cache API, media-session helper, login hand-off
 electron/main.mjs         desktop shell: windows and styles, tray, shortcuts, IPC, navigation lock
 electron/layout.mjs       saved state and on-screen placement per style (pure, tested)
 electron/secrets.mjs      encrypted token store
 electron/updates.mjs      GitHub release check (pure, tested)
 electron/preload.cjs      the window.lyricStars bridge
 docs/INSTALL.md           friend install guide (SmartScreen, keys, releasing)
-tools/smtc-probe.ps1      Windows media-session reader (spike; becomes the native helper)
+native/media-helper.cs    Windows media-session helper (npm run helper → native/bin/, not committed)
+tools/smtc-probe.ps1      PowerShell fallback for the helper
 web/config.js             BUILT_IN_CLIENT_ID and UPDATE_REPO for friend builds
 web/js/auth.js            Spotify PKCE login and silent refresh
-web/js/sources/           spotify.js, mediaSession.js, demo.js, clock.js (position smoothing)
+web/js/sources/           auto.js (Automatic), spotify.js, mediaSession.js, players.js (player names, title tidying),
+                          demo.js, clock.js (position smoothing)
 web/js/lyrics/            lrc.js (parser), match.js (no-wrong-lyrics rules), lrclib.js (provider)
 web/js/cache.js           lyric cache client (found: kept; not found: 1 day)
 web/js/timing.js          word timing: real tags or taps, else syllable estimate

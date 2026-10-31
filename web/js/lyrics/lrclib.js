@@ -16,6 +16,11 @@ async function getJson(url, fetchImpl) {
   try {
     res = await fetchImpl(url, { headers: { Accept: 'application/json' } });
   } catch (e) {
+    // An error page from the service's proxy (502…) has no CORS header and fails like
+    // a network error; only call it offline when the computer says so.
+    if (globalThis.navigator?.onLine === true) {
+      throw new LyricsError('service-down', 'The lyrics service is not responding.');
+    }
     throw new LyricsError('offline', 'Could not reach the lyrics service.');
   }
   if (res.status === 404) return null;

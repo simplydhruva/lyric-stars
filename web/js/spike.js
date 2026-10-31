@@ -288,6 +288,7 @@ export class SpikePanel {
     const t = app.track;
     const rec = app.lyrics?.result?.record;
     this.parts.now.innerHTML = `
+      <p data-part="from">From: ${esc(sourceLabel(app))}</p>
       <p>${t ? `${esc(t.title)} · ${esc(t.artist)} · ${time(t.durationMs)}` : 'No track'}</p>
       <p>Lyrics: ${esc(app.lyrics?.status || '–')}${rec ? ` · LRCLIB #${rec.id} (${rec.duration}s)` : ''}${app.lyrics?.offline ? ' · from cache, offline' : ''}</p>`;
     this.parts.endpoint.innerHTML = endpoint;
@@ -307,4 +308,14 @@ export class SpikePanel {
       ${verdict}
       ${this.flash ? `<p class="tap-flash">${esc(this.flash)}</p>` : ''}`;
   }
+}
+
+// "Automatic · Edge on this PC", "Spotify account", …
+function sourceLabel(app) {
+  const src = app.source;
+  if (!src) return 'nothing yet';
+  const pb = app.playback;
+  const where =
+    src.name === 'spotify' ? 'Spotify account' : src.name === 'media-session' ? `${pb?.player || 'media player'} on this PC` : src.name === 'demo' ? 'demo' : 'waiting';
+  return src.kind === 'auto' ? `Automatic · ${where}${src.followsAccount ? '' : ' (no login)'}` : where;
 }

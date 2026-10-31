@@ -5,6 +5,7 @@ import { PlaybackClock } from './sources/clock.js';
 import { SpotifySource } from './sources/spotify.js';
 import { MediaSessionSource } from './sources/mediaSession.js';
 import { DemoSource } from './sources/demo.js';
+import { AutoSource } from './sources/auto.js';
 import { fetchLyrics, LyricsError } from './lyrics/lrclib.js';
 import * as cache from './cache.js';
 import { buildTimeline, timelineKind } from './timing.js';
@@ -72,7 +73,7 @@ const settingsPanel = new SettingsPanel($('settings'), {
   nudgeGlobal,
   cacheStats: cache.stats,
   clearCache: cache.clearAll,
-  canDisconnect: () => settings.get('source') === 'spotify' && auth.isLoggedIn(),
+  canDisconnect: () => accountShown(),
   disconnect,
   desktop: desktop && (() => ({ info: app.desktop, bridge: desktop })),
 });
@@ -164,14 +165,18 @@ function startSource() {
   app.source = null;
   app.problem = null;
   app.playback = null;
+  if (app.track) onTrackChange(null); // the new source says what is playing
   const kind = settings.get('source');
   const handlers = { onSample, onProblem };
   if (new URLSearchParams(location.search).has('demo')) {
     app.source = new DemoSource(handlers);
   } else if (kind === 'media-session') {
     app.source = new MediaSessionSource(handlers);
+  } else if (kind === 'auto' && ON_WINDOWS && (auth.isLoggedIn() || settings.get('noLogin'))) {
+    app.source = new AutoSource(handlers, { useAccount: auth.isLoggedIn() });
   } else {
-    if (!auth.getClientId()) return setAuthState('setup');
+    // Automatic on Windows offers "Use without logging in" first; setup waits for Connect.
+    if (!auth.getClientId()) return setAuthState(kind === 'auto' && ON_WINDOWS ? 'connect' : 'setup');
     // Keep a login error (and its message) on screen until the user acts on it.
     if (!auth.isLoggedIn()) return app.authState && app.authState !== 'setup' ? setAuthState(app.authState, app.authMessage) : setAuthState('connect');
     app.source = new SpotifySource(handlers);
@@ -180,6 +185,13 @@ function startSource() {
   app.source.start();
   spike.onSourceChanged();
   updateView();
+}
+
+// Automatic needs the Windows media session; elsewhere it is the Spotify account.
+const ON_WINDOWS = /Windows/.test(navigator.userAgent);
+
+function accountShown() {
+  return settings.get('source') !== 'media-session' && auth.isLoggedIn();
 }
 
 function setAuthState(state, message = '') {
@@ -341,7 +353,10 @@ function currentStateKey() {
   if (['expired', 'not-allowlisted', 'refused', 'media-session-unavailable'].includes(p)) return p;
   const pb = app.playback;
   if (!pb) return null;
-  if (pb.kind === 'idle') return app.source?.name === 'media-session' ? 'idle-media-session' : 'idle';
+  if (pb.kind === 'idle') {
+    if (app.source?.kind === 'auto') return app.source.followsAccount ? 'idle' : 'idle-local';
+    return app.source?.name === 'media-session' ? 'idle-media-session' : 'idle';
+  }
   if (pb.kind === 'ad' || pb.kind === 'podcast') return pb.kind;
   const ls = app.lyrics?.status;
   if (['notfound', 'plain', 'instrumental', 'lyrics-offline', 'lyrics-service-down'].includes(ls)) return ls;
@@ -388,6 +403,13 @@ function updateView() {
       b.textContent = s.button.label;
       b.dataset.action = s.button.action;
     }
+    // "Use without logging in" needs the Windows media session.
+    const local = $('card-local');
+    local.hidden = !s.local || !ON_WINDOWS;
+    if (s.local) {
+      local.textContent = s.local.label;
+      local.dataset.action = s.local.action;
+    }
   }
 
   const ck = chipKey();
@@ -398,7 +420,7 @@ function updateView() {
   if (app.timeline) $('timing').textContent = TIMING_LABELS[timelineKind(app.timeline)];
   $('btn-wrong').hidden = app.lyrics?.result?.record?.id == null || app.lyrics.status === 'notfound' || app.lyrics.own;
   $('btn-mode').textContent = app.mode === 'word' ? 'Word by word' : 'Line by line';
-  $('btn-disconnect').hidden = settings.get('source') !== 'spotify' || !auth.isLoggedIn();
+  $('btn-disconnect').hidden = !accountShown();
 }
 
 // Keep the rate-limit countdown ticking.
@@ -408,11 +430,16 @@ setInterval(() => app.problem?.code === 'rate-limited' && updateView(), 1000);
 
 const actions = {
   login: async () => {
+    if (!auth.getClientId()) return setAuthState('setup');
     if ((await auth.beginLogin()) === 'browser') setAuthState('login-in-browser');
   },
   setup: () => setAuthState('setup'),
-  'use-media-session': () => {
-    settings.set('source', 'media-session');
+  // Follow this PC only, no account: the fallback for anyone not on the user list.
+  'use-local': () => {
+    if (app.problem?.code === 'not-allowlisted' || app.problem?.code === 'refused') auth.logout();
+    settings.set('noLogin', true);
+    if (settings.get('source') === 'spotify') settings.set('source', 'auto');
+    app.authState = null;
     startSource();
   },
   'use-spotify': () => {
@@ -423,7 +450,7 @@ const actions = {
   'retry-lyrics': () => app.track && loadLyrics(app.track, { force: true }),
 };
 
-$('card-button').addEventListener('click', (e) => actions[e.currentTarget.dataset.action]?.());
+for (const id of ['card-button', 'card-local']) $(id).addEventListener('click', (e) => actions[e.currentTarget.dataset.action]?.());
 
 $('copy-redirect').addEventListener('click', async (e) => {
   try {
@@ -483,6 +510,7 @@ $('btn-disconnect').addEventListener('click', disconnect);
 
 function disconnect() {
   auth.logout();
+  settings.set('noLogin', false);
   app.source?.stop();
   app.source = null;
   onTrackChange(null);

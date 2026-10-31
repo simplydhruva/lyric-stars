@@ -95,6 +95,7 @@ async function boot() {
     await startServer({
       port: PORT,
       dataDir: DEFAULT_DATA_DIR,
+      mediaHelper: app.isPackaged ? path.join(process.resourcesPath, 'app.asar.unpacked', 'native', 'bin', 'lyricstars-media.exe') : undefined,
       probeScript: app.isPackaged ? path.join(process.resourcesPath, 'app.asar.unpacked', 'tools', 'smtc-probe.ps1') : undefined,
       onLoginHandoff,
     });

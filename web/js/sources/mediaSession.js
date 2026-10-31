@@ -1,6 +1,7 @@
-// Windows media-session source (experimental in milestone 1).
-// Reads the Spotify desktop app's session through the local server's probe.
+// Windows media-session source: what Spotify (or, failing that, another player) shows
+// in the Windows volume pop-up, read by the local server's native helper. No login.
 import { simplify } from '../lyrics/match.js';
+import { isSpotifyApp, playerName, tidyMediaInfo } from './players.js';
 
 const POLL_MS = 250;
 
@@ -53,26 +54,42 @@ export class MediaSessionSource {
 
   _handle(d) {
     if (!d.ok || !d.session || !d.title) {
+      this.playedKey = null;
       this.onSample({ kind: 'idle' });
       return;
     }
     const isPlaying = d.status === 'Playing';
+    const spotify = isSpotifyApp(d.app);
+    const { title, artist, album } = tidyMediaInfo(d);
+    const durationMs = d.durationMs || 0;
+    const key = `ms:${simplify(title)}|${simplify(artist)}|${Math.round(durationMs / 1000)}`;
+    // A video left paused in a browser tab is not "the song": other players count while
+    // playing, or when paused right after we showed them playing. Spotify always counts.
+    if (isPlaying) this.playedKey = key;
+    else if (!spotify && key !== this.playedKey) {
+      this.onSample({ kind: 'idle' });
+      return;
+    }
     // Position was true at lastUpdatedMs (wall clock); express that in performance.now() time.
     const updated = d.lastUpdatedMs > 0 && d.lastUpdatedMs <= Date.now() + 1000 ? d.lastUpdatedMs : d.nowMs;
     const at = performance.now() - (Date.now() - updated);
-    const artists = String(d.artist || '').split(/\s*,\s*/).filter(Boolean);
-    const durationMs = d.durationMs || 0;
+    // Spotify joins artists with commas; other players often write "A & B" or "A feat. B",
+    // so keep the whole name first (for the search) and the parts for matching.
+    const parts = artist.split(spotify ? /\s*,\s*/ : /\s*(?:,|&|\bfeat\.?|\bft\.?)\s*/i).filter(Boolean);
+    const artists = spotify ? parts : [...new Set([artist, ...parts])].filter(Boolean);
     this.onSample({
       kind: 'track',
       at,
       isPlaying,
       positionMs: d.positionMs || 0,
+      player: playerName(d.app),
+      spotify,
       track: {
-        key: `ms:${simplify(d.title)}|${simplify(d.artist)}|${Math.round(durationMs / 1000)}`,
-        title: d.title,
-        artists,
-        artist: d.artist || '',
-        album: d.album || '',
+        key,
+        title,
+        artists: artists.length ? artists : [artist],
+        artist,
+        album,
         durationMs,
       },
     });

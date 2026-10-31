@@ -8,12 +8,14 @@ export const STATES = {
     title: 'Lyric Stars',
     text: 'See the lyrics of whatever you play on Spotify, as stars.',
     button: { label: 'Connect Spotify', action: 'login' },
+    local: { label: 'Use without logging in', action: 'use-local' },
   },
   'login-denied': {
     card: true,
     title: 'Login cancelled',
     text: 'Lyric Stars needs to see what you are playing on Spotify.',
     button: { label: 'Connect Spotify', action: 'login' },
+    local: { label: 'Use without logging in', action: 'use-local' },
   },
   'login-in-browser': {
     card: true,
@@ -53,8 +55,8 @@ export const STATES = {
     card: true,
     title: 'This Spotify account is not on the user list',
     text:
-      'This app is in Spotify Development Mode, so only accounts the owner adds can log in. Ask the owner to add your Spotify email under "Users and access", or use the Windows media session, which needs no login.',
-    button: { label: 'Use Windows media session', action: 'use-media-session' },
+      'Only accounts the app owner adds can log in. Ask the owner to add your Spotify email under "Users and access", or use Lyric Stars without logging in: it then follows the Spotify app on this PC.',
+    button: { label: 'Use without logging in', action: 'use-local' },
   },
   refused: {
     card: true,
@@ -82,7 +84,14 @@ export const STATES = {
   },
 
   idle: { soft: true, title: 'Nothing playing', text: 'Play something on Spotify and it will appear here.' },
-  'idle-media-session': { soft: true, title: 'Nothing playing', text: 'Open Spotify on this PC and press play.' },
+  'idle-media-session': { soft: true, title: 'Nothing playing', text: 'Play a song in Spotify (or another player) on this PC.' },
+  // Automatic without a login: only this PC can be followed.
+  'idle-local': {
+    soft: true,
+    title: 'Nothing playing',
+    text: 'Play a song in Spotify on this PC. To follow your phone or speakers too, connect your Spotify account.',
+    button: { label: 'Connect Spotify', action: 'login' },
+  },
   ad: { soft: true, title: 'Ad break', text: 'Lyrics come back after the ad.' },
   podcast: { soft: true, title: '{title}', text: 'Lyrics are shown for songs only.' },
   notfound: { soft: true, title: 'No synced lyrics for this song', text: '{track}' },

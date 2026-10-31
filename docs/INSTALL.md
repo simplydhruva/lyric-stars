@@ -25,7 +25,12 @@ Only do this for a file you got from someone you trust.
 Click **Next** through the installer. It installs just for you, so no admin password is needed. Afterwards you'll find
 **Lyric Stars** in the Start menu and on the desktop.
 
-## 4. Connect Spotify
+## 4. Connect Spotify, or don't
+
+**Without logging in:** click **Use without logging in**. Lyric Stars then follows the Spotify app on this PC (or, if
+Spotify isn't playing, another player such as a browser tab). This works for everyone, with no account setup.
+
+**With your Spotify account**, Lyric Stars also follows music on your phone or speakers:
 
 1. Open Lyric Stars and click **Connect Spotify**.
 2. Your browser opens the Spotify login page. Log in and accept.
@@ -33,8 +38,11 @@ Click **Next** through the installer. It installs just for you, so no admin pass
 
 Your login is stored encrypted, so only your Windows account can read it. Settings → **Disconnect Spotify** removes it.
 
-If you'd rather not log in, use Settings → **Lyrics from: Windows media session**. It reads what Spotify, or another player, is
-showing in the Windows volume pop-up. Timing is a little less precise this way.
+If Spotify says **This Spotify account is not on the user list**, ask the person who sent you the app to add your email,
+or click **Use without logging in**.
+
+Settings → **Lyrics from** picks the source. **Automatic** (the default) uses Spotify on this PC when it plays, your
+account when music plays elsewhere, then other players on this PC. Diagnostics (`D`) shows which one is in use.
 
 ## 5. Pick a style
 
@@ -91,6 +99,7 @@ The app checks the Releases page once a day. When a new version is out, you'll s
 
 - **"Lyric Stars could not start":** another program is using port 5173, which Lyric Stars needs for the Spotify login. That's often the browser version (`npm start`). Close it and open the app again.
 - **Wrong lyrics are never shown.** If a song has no confident match, you'll see "No synced lyrics for this song" instead.
+- **"The lyrics service isn't responding":** LRCLIB, where the lyrics come from, is down. Lyric Stars keeps trying, and songs you've played before still work.
 - **Lyrics run early or late:** use Sync editor → Global −/+ for Bluetooth headphones, or `[` / `]` for one song.
 
 ## Uninstall

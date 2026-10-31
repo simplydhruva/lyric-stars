@@ -7,6 +7,12 @@ import { formatOffset } from './sync.js';
 const esc = (v) =>
   String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 
+const SOURCE_HELP = {
+  auto: 'Spotify on this PC first (fastest, no login), then your Spotify account for your phone or speakers, then any other player on this PC.',
+  spotify: 'Your Spotify account, on any device. Needs login.',
+  'media-session': 'What plays on this PC, no login: Spotify first, otherwise another player (browser, Apple Music…). Windows only.',
+};
+
 function radios(name, options, value) {
   return `<div class="seg" role="radiogroup">${options
     .map(
@@ -44,7 +50,8 @@ export class SettingsPanel {
     this.el.innerHTML = `
       <div class="editor-head"><h2>Settings</h2><span></span><button type="button" data-set="toggle" title="Close (S)">Close</button></div>
       <h3>Lyrics from</h3>
-      ${radios('source', [['spotify', 'Spotify account'], ['media-session', 'Windows media session']], g('source'))}
+      ${radios('source', [['auto', 'Automatic'], ['spotify', 'Spotify account'], ['media-session', 'This PC only']], g('source'))}
+      <p>${esc(SOURCE_HELP[g('source')] || '')}</p>
       <h3>Show</h3>
       ${radios('mode', [['word', 'Word by word'], ['line', 'Line by line']], g('mode'))}
       <h3>Colors</h3>
@@ -143,7 +150,7 @@ export class SettingsPanel {
     const value = input.type === 'checkbox' ? input.checked : input.value;
     settings.set(name, value);
     this.host.onChange(name);
-    if (name === 'theme') this.render(); // shows or hides the custom color
+    if (name === 'theme' || name === 'source') this.render(); // custom color, source help
   }
 
   earlier() {

@@ -9,10 +9,12 @@
   "main": "electron/main.mjs",
   "scripts": {
     "start": "node server.js",
-    "desktop": "electron .",
+    "desktop": "node tools/build-helper.mjs --if-missing && electron .",
+    "helper": "node tools/build-helper.mjs",
     "test": "node --test test/",
     "harness": "node tools/harness.mjs",
     "icons": "node tools/make-icon.mjs",
+    "predist": "node tools/build-helper.mjs",
     "dist": "electron-builder --win nsis"
   },
   "engines": {
@@ -34,10 +36,12 @@
       "server.js",
       "web/**/*",
       "electron/**/*",
-      "tools/smtc-probe.ps1"
+      "tools/smtc-probe.ps1",
+      "native/bin/lyricstars-media.exe"
     ],
     "asarUnpack": [
-      "tools/smtc-probe.ps1"
+      "tools/smtc-probe.ps1",
+      "native/bin/lyricstars-media.exe"
     ],
     "win": {
       "target": [

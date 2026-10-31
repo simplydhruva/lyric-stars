@@ -79,6 +79,9 @@ code {
 .card.soft { background: none; border: none; }
 .card.soft h1 { font-weight: 400; color: var(--gold-dim); font-size: 20px; }
 .card.soft p { font-size: 14px; }
+/* The quieter second choice under the main button. */
+#card-local { display: block; margin: 14px auto 0; border-color: transparent; background: none; color: var(--muted); }
+#card-local:hover { color: var(--text); border-color: var(--line); }
 
 .setup { text-align: left; width: min(560px, calc(100vw - 32px)); }
 .setup ol { padding-left: 20px; line-height: 1.6; color: var(--text); }
