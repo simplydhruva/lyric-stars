@@ -11,7 +11,7 @@
     "start": "node server.js",
     "desktop": "node tools/build-helper.mjs --if-missing && electron .",
     "helper": "node tools/build-helper.mjs",
-    "test": "node --test test/",
+    "test": "node --test",
     "smoke": "node --experimental-websocket tools/smoke.mjs",
     "harness": "node tools/harness.mjs",
     "icons": "node tools/make-icon.mjs",
