@@ -1,0 +1,14 @@
+{
+  "name": "lyric-stars",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Spotify lyrics as a constellation.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test test/"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

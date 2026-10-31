@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Lyric Stars</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <canvas id="sky" aria-label="Lyrics constellation"></canvas>
+
+  <div id="chips">
+    <span id="chip" class="chip" hidden></span>
+    <span id="timing" class="chip subtle" hidden title="How word times were found"></span>
+  </div>
+
+  <section id="card" class="card" hidden role="status" aria-live="polite">
+    <h1 id="card-title"></h1>
+    <p id="card-text"></p>
+    <button id="card-button" class="primary" hidden></button>
+  </section>
+
+  <section id="setup" class="card setup" hidden>
+    <h1>Set up Spotify</h1>
+    <p>This copy has no Spotify Client ID built in. Create one free Spotify app (about two minutes):</p>
+    <ol>
+      <li>Open the <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">Spotify developer dashboard</a> and choose <b>Create app</b>. Your account needs Spotify Premium.</li>
+      <li>Add this redirect URI exactly:
+        <span class="copy-row"><code id="redirect-uri"></code><button id="copy-redirect" type="button">Copy</button></span>
+      </li>
+      <li>Under <b>Which API/SDKs</b>, tick <b>Web API</b>, then save.</li>
+      <li>Under <b>User Management</b>, add the Spotify email of everyone who will use it (up to five).</li>
+      <li>Copy the <b>Client ID</b> from the app's settings and paste it here:</li>
+    </ol>
+    <form id="setup-form" class="copy-row">
+      <input id="client-id" autocomplete="off" spellcheck="false" placeholder="32 letters and numbers" aria-label="Spotify Client ID">
+      <button class="primary" type="submit">Save</button>
+    </form>
+    <p id="setup-error" class="error" hidden></p>
+    <p class="hint">If Spotify shows <code>INVALID_CLIENT</code> or <code>Invalid redirect URI</code> after you connect, come back here and check both values.</p>
+  </section>
+
+  <nav id="controls" aria-label="Controls">
+    <button id="btn-mode" type="button" title="Word or line mode (M)"></button>
+    <button id="btn-fullscreen" type="button" title="Fullscreen (F)">Fullscreen</button>
+    <button id="btn-wrong" type="button" title="These lyrics are for a different song" hidden>Wrong lyrics?</button>
+    <button id="btn-spike" type="button" title="Timing and source diagnostics (D)">Diagnostics</button>
+    <button id="btn-disconnect" type="button" hidden>Disconnect</button>
+  </nav>
+
+  <aside id="spike" class="panel" hidden></aside>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
