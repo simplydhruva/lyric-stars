@@ -39,3 +39,19 @@ test('lineIndexAt finds the active line', () => {
   assert.equal(lineIndexAt(lines, 2999), 1);
   assert.equal(lineIndexAt(lines, 99999), 2);
 });
+
+test('parseLrc reads enhanced word tags', () => {
+  const lines = parseLrc('[00:10.00]<00:10.00>Look <00:10.50>at the <00:11.20>stars<00:12.00>\n[00:13.00]plain line');
+  assert.equal(lines[0].text, 'Look at the stars');
+  assert.deepEqual(lines[0].words.map((w) => [w.text, w.start]), [
+    ['Look', 10000], ['at', 10500], ['the', 10850], ['stars', 11200],
+  ]);
+  assert.equal(lines[0].wordsEnd, 12000);
+  assert.equal(lines[1].words, undefined);
+});
+
+test('parseLrc applies [offset:] to word tags', () => {
+  const lines = parseLrc('[offset:500]\n[00:10.00]<00:10.00>a <00:11.00>b');
+  assert.equal(lines[0].time, 9500);
+  assert.deepEqual(lines[0].words.map((w) => w.start), [9500, 10500]);
+});

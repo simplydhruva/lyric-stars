@@ -18,6 +18,8 @@ const DATA_DIR =
   process.env.LYRICSTARS_DATA ||
   path.join(process.env.APPDATA || path.join(os.homedir(), '.config'), 'LyricStars');
 const CACHE_DIR = path.join(DATA_DIR, 'cache');
+// User timings are kept apart so clearing the lyric cache never loses them.
+const TIMINGS_DIR = path.join(DATA_DIR, 'timings');
 const MAX_BODY = 2 * 1024 * 1024;
 
 const TYPES = {
@@ -71,7 +73,7 @@ function readBody(req) {
 
 function cacheFile(key) {
   const name = crypto.createHash('sha1').update(key).digest('hex');
-  return path.join(CACHE_DIR, `${name}.json`);
+  return path.join(key.startsWith('timings:') ? TIMINGS_DIR : CACHE_DIR, `${name}.json`);
 }
 
 async function handleCache(req, res, key) {
@@ -87,7 +89,7 @@ async function handleCache(req, res, key) {
   }
   if (req.method === 'PUT') {
     const value = JSON.parse(await readBody(req));
-    await fs.mkdir(CACHE_DIR, { recursive: true });
+    await fs.mkdir(path.dirname(file), { recursive: true });
     const tmp = `${file}.${process.pid}.tmp`;
     await fs.writeFile(tmp, JSON.stringify({ key, value }));
     await fs.rename(tmp, file);

@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "test": "node --test test/"
+    "test": "node --test test/",
+    "harness": "node tools/harness.mjs"
   },
   "engines": {
     "node": ">=20"

@@ -58,3 +58,19 @@ export async function stats() {
   const res = await fetch('/api/cache-stats');
   return res.ok ? res.json() : { count: 0, bytes: 0 };
 }
+
+// Small per-track records (user timings). Kept on disk like lyrics, never expire.
+export async function getValue(key) {
+  if (memory.has(key)) return memory.get(key);
+  let value = null;
+  try {
+    value = await request('GET', key);
+  } catch {}
+  memory.set(key, value);
+  return value;
+}
+
+export async function putValue(key, value) {
+  memory.set(key, value);
+  await request(value == null ? 'DELETE' : 'PUT', key, value ?? undefined);
+}

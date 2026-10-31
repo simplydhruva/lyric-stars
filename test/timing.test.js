@@ -1,8 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { countSyllables, splitWords, buildTimeline, DEFAULTS } from '../web/js/timing.js';
+import { countSyllables, splitWords, buildTimeline, DEFAULTS, timelineKind } from '../web/js/timing.js';
 
-// Words like "everything" (sung as 3 or 4) need the pronunciation dictionary in milestone 2.
 test('countSyllables on common English words', () => {
   const cases = { look: 1, at: 1, the: 1, stars: 1, shine: 1, yellow: 2, beautiful: 3, little: 2, love: 1, you: 1, wishes: 2, makes: 1 };
   for (const [w, n] of Object.entries(cases)) assert.equal(countSyllables(w), n, w);
@@ -40,4 +39,24 @@ test('buildTimeline: syllables, not letters, set word length', () => {
 test('buildTimeline: empty lines produce no words', () => {
   const tl = buildTimeline([{ time: 0, text: '' }, { time: 5000, text: 'x' }]);
   assert.equal(tl[0].words.length, 0);
+});
+
+test('buildTimeline uses real word times when present', () => {
+  const tl = buildTimeline(
+    [
+      { time: 1000, text: 'a b', words: [{ text: 'a', start: 1000 }, { text: 'b', start: 1700 }], wordsEnd: 2100 },
+      { time: 5000, text: 'c d' },
+    ],
+    { trackDurationMs: 9000 }
+  );
+  assert.equal(tl[0].timing, 'word');
+  assert.deepEqual(tl[0].words.map((w) => [w.start, w.end]), [[1000, 1700], [1700, 2100]]);
+  assert.equal(tl[1].timing, 'estimated');
+  assert.equal(timelineKind(tl), 'word');
+});
+
+test('dictionary fixes words the vowel rule gets wrong', () => {
+  assert.equal(countSyllables('everything'), 3);
+  assert.equal(countSyllables('fire'), 2);
+  assert.equal(countSyllables('loved'), 1);
 });

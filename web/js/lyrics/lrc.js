@@ -14,6 +14,37 @@ function toMs(min, sec, frac) {
   return Number(min) * 60000 + Number(sec) * 1000 + ms;
 }
 
+// Enhanced LRC: "<00:12.50>Look <00:12.90>at" — each tag gives the start of the text after it.
+// Text before the first tag starts at the line time. A trailing tag marks when the last word ends.
+// Several words between two tags share that span evenly.
+function parseWordTags(rest, lineTime) {
+  const parts = rest.split(/(<\d{1,3}:\d{1,2}(?:[.:]\d{1,3})?>)/);
+  const segs = [];
+  let at = lineTime;
+  let wordsEnd = null;
+  for (const p of parts) {
+    const tag = p.match(/^<(\d{1,3}):(\d{1,2})(?:[.:](\d{1,3}))?>$/);
+    if (tag) {
+      at = toMs(tag[1], tag[2], tag[3]);
+      wordsEnd = at;
+      continue;
+    }
+    const text = p.trim();
+    if (text) {
+      segs.push({ start: at, text });
+      wordsEnd = null;
+    }
+  }
+  const words = [];
+  segs.forEach((s, i) => {
+    const pieces = s.text.split(/\s+/);
+    const next = i + 1 < segs.length ? segs[i + 1].start : (wordsEnd ?? s.start + 400 * pieces.length);
+    const step = Math.max(0, next - s.start) / pieces.length;
+    pieces.forEach((text, k) => words.push({ text, start: Math.round(s.start + step * k) }));
+  });
+  return wordsEnd != null ? { words, wordsEnd } : { words };
+}
+
 export function parseLrc(text) {
   if (!text) return [];
   let offset = 0;
@@ -35,12 +66,23 @@ export function parseLrc(text) {
       last = TIME_TAG.lastIndex;
     }
     if (!times.length) continue; // metadata like [ar:...] or junk
-    // Word tags (enhanced LRC) are stripped for now; the timing engine reads them later.
-    const lyric = row.slice(last).replace(WORD_TAG, '').replace(/\s+/g, ' ').trim();
-    for (const t of times) lines.push({ time: t, text: lyric });
+    const rest = row.slice(last);
+    const lyric = rest.replace(WORD_TAG, ' ').replace(/\s+/g, ' ').trim();
+    WORD_TAG.lastIndex = 0;
+    const hasWordTags = WORD_TAG.test(rest);
+    for (const t of times) {
+      const line = { time: t, text: lyric };
+      // Repeated timestamps can't share absolute word tags, so only the first copy keeps them.
+      if (hasWordTags && t === times[0]) Object.assign(line, parseWordTags(rest, t));
+      lines.push(line);
+    }
   }
   // A positive offset means lyrics should appear earlier.
-  for (const l of lines) l.time = Math.max(0, l.time - offset);
+  for (const l of lines) {
+    l.time = Math.max(0, l.time - offset);
+    if (l.words) for (const w of l.words) w.start = Math.max(0, w.start - offset);
+    if (l.wordsEnd != null) l.wordsEnd = Math.max(0, l.wordsEnd - offset);
+  }
   lines.sort((a, b) => a.time - b.time);
   return lines;
 }

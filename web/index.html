@@ -44,11 +44,14 @@
     <button id="btn-mode" type="button" title="Word or line mode (M)"></button>
     <button id="btn-fullscreen" type="button" title="Fullscreen (F)">Fullscreen</button>
     <button id="btn-wrong" type="button" title="These lyrics are for a different song" hidden>Wrong lyrics?</button>
+    <button id="btn-editor" type="button" title="Tap-to-sync editor (E)">Sync editor</button>
     <button id="btn-spike" type="button" title="Timing and source diagnostics (D)">Diagnostics</button>
     <button id="btn-disconnect" type="button" hidden>Disconnect</button>
   </nav>
 
   <aside id="spike" class="panel" hidden></aside>
+  <aside id="editor" class="panel editor" hidden aria-label="Sync editor"></aside>
+  <div id="toast" class="toast" role="status" hidden></div>
 
   <script type="module" src="js/main.js"></script>
 </body>

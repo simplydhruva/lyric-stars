@@ -7,10 +7,13 @@ import { MediaSessionSource } from './sources/mediaSession.js';
 import { DemoSource } from './sources/demo.js';
 import { fetchLyrics, LyricsError } from './lyrics/lrclib.js';
 import * as cache from './cache.js';
-import { buildTimeline } from './timing.js';
+import { buildTimeline, timelineKind } from './timing.js';
 import { Renderer } from './renderer.js';
 import { STATES, fill } from './states.js';
 import { SpikePanel } from './spike.js';
+import { SyncEditor } from './editor.js';
+import * as corrections from './corrections.js';
+import * as sync from './sync.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -21,6 +24,8 @@ export const app = {
   track: null,
   lyrics: null, // { status, result, entry }
   timeline: null,
+  baseLines: null, // timed lines from the lyric service, before the user's timings
+  record: null, // the user's timings for this track (corrections.js)
   problem: null, // from the source
   authState: null, // 'setup' | 'connect' | error code
   authMessage: '',
@@ -31,6 +36,30 @@ export const app = {
 
 const renderer = new Renderer($('sky'));
 const spike = new SpikePanel($('spike'), app);
+const latency = new sync.DisplayLatency();
+
+// Lyric time at a moment: where the song is, shifted by the offsets. Positive offsets show lyrics earlier.
+function lyricTime(t) {
+  return app.clock.position(t) + sync.globalOffset() + sync.songOffset(app.track?.key);
+}
+// Frames are drawn ahead by the display delay so a word reaches the screen as it is heard.
+function drawPosition() {
+  return lyricTime() + latency.ms;
+}
+
+const editor = new SyncEditor($('editor'), {
+  state: () => ({ track: app.track, timeline: app.timeline, record: app.record }),
+  lyricTime,
+  drawPosition,
+  offsets: () => ({ song: sync.songOffset(app.track?.key), global: sync.globalOffset(), display: latency.ms }),
+  change: (record) => saveRecord(record),
+  importText: (text) => importTimings(text),
+  nudgeGlobal: (ms) => {
+    const v = sync.setGlobalOffset(sync.globalOffset() + ms);
+    toast(`Global offset ${sync.formatOffset(v)}`);
+    editor.paint();
+  },
+});
 
 // ---- sources -------------------------------------------------------------
 
@@ -92,7 +121,10 @@ function onTrackChange(track) {
   app.track = track;
   app.lyrics = null;
   app.timeline = null;
+  app.baseLines = null;
+  app.record = null;
   renderer.setTimeline(null); // never leave the previous song's lyrics on screen
+  editor.onTrackChange();
   clearTimeout(app.retryTimer);
   if (track) loadLyrics(track);
 }
@@ -122,15 +154,68 @@ async function loadLyrics(track, { force = false } = {}) {
   }
 }
 
-function applyLyrics(track, entry, offline) {
+async function applyLyrics(track, entry, offline) {
+  const seq = app.loadSeq;
   const result = entry.result;
+  const saved = await cache.getValue(corrections.key(track));
+  if (seq !== app.loadSeq) return;
   app.lyrics = { status: result.status, result, entry, offline };
-  if (result.status === 'synced') {
-    app.timeline = buildTimeline(result.lines, { trackDurationMs: track.durationMs });
-    renderer.setTimeline(app.timeline);
-  }
+  app.baseLines = result.status === 'synced' ? result.lines : null;
+  const recordId = result.record?.id ?? null;
+  // Timings saved for other lyrics (the match changed since) are not applied to these.
+  const usable = saved && (saved.ownLyrics || corrections.apply(app.baseLines, saved));
+  app.record = usable ? saved : app.baseLines ? corrections.create(track, app.baseLines, { recordId }) : null;
+  rebuildTimeline();
   spike.onLyrics();
+}
+
+function rebuildTimeline() {
+  const lines = app.record ? corrections.apply(app.baseLines, app.record) : app.baseLines;
+  if (app.record?.ownLyrics) app.lyrics = { ...app.lyrics, status: 'synced', own: true };
+  app.timeline = lines ? buildTimeline(lines, { trackDurationMs: app.track?.durationMs }) : null;
+  renderer.setTimeline(app.timeline);
+  editor.paint();
   updateView();
+}
+
+async function saveRecord(record) {
+  const track = app.track;
+  if (!track) return;
+  app.record = record;
+  rebuildTimeline();
+  try {
+    await cache.putValue(corrections.key(track), record);
+  } catch {
+    editor.say('Could not save your timings. Is the Lyric Stars server still running?');
+  }
+}
+
+function importTimings(text) {
+  const track = app.track;
+  const record = corrections.parseImport(text, track, app.baseLines);
+  if (Number.isFinite(record.offsetMs)) sync.setSongOffset(track.key, record.offsetMs);
+  delete record.offsetMs;
+  saveRecord(record);
+  const timed = corrections.timedLineCount(record);
+  return record.ownLyrics
+    ? `Using your lyrics for this song (${record.lines.length} lines, ${timed} with word times).`
+    : `Imported word times for ${timed} lines.`;
+}
+
+function nudgeSongOffset(ms) {
+  if (!app.track) return;
+  const v = sync.setSongOffset(app.track.key, sync.songOffset(app.track.key) + ms);
+  toast(`Offset ${sync.formatOffset(v)} for this song`);
+  editor.paint();
+}
+
+let toastTimer;
+function toast(text) {
+  const el = $('toast');
+  el.textContent = text;
+  el.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => (el.hidden = true), 1600);
 }
 
 async function rejectCurrentLyrics() {
@@ -140,6 +225,8 @@ async function rejectCurrentLyrics() {
   const rejectIds = [...new Set([...(app.lyrics.entry?.rejectIds || []), id])];
   await cache.putLyrics(track, { status: 'notfound' }, { rejectIds, savedAt: 0 });
   app.timeline = null;
+  app.baseLines = null;
+  app.record = null;
   renderer.setTimeline(null);
   loadLyrics(track, { force: true });
 }
@@ -171,6 +258,8 @@ function chipKey() {
   if (app.playback?.kind === 'track' && !app.playback.isPlaying) return 'paused';
   return null;
 }
+
+const TIMING_LABELS = { word: 'word-timed', yours: 'your timing', estimated: 'estimated' };
 
 function updateView() {
   const key = currentStateKey();
@@ -206,10 +295,9 @@ function updateView() {
   $('chip').hidden = !ck;
   if (ck) $('chip').textContent = fill(STATES[ck].chip, vars);
 
-  const timed = app.lyrics?.status === 'synced';
-  $('timing').hidden = !timed;
-  $('timing').textContent = 'estimated';
-  $('btn-wrong').hidden = app.lyrics?.result?.record?.id == null || app.lyrics.status === 'notfound';
+  $('timing').hidden = !app.timeline;
+  if (app.timeline) $('timing').textContent = TIMING_LABELS[timelineKind(app.timeline)];
+  $('btn-wrong').hidden = app.lyrics?.result?.record?.id == null || app.lyrics.status === 'notfound' || app.lyrics.own;
   $('btn-mode').textContent = app.mode === 'word' ? 'Word by word' : 'Line by line';
   $('btn-disconnect').hidden = settings.get('source') !== 'spotify' || !auth.isLoggedIn();
 }
@@ -274,7 +362,18 @@ function toggleFullscreen() {
 $('btn-mode').addEventListener('click', toggleMode);
 $('btn-fullscreen').addEventListener('click', toggleFullscreen);
 $('btn-wrong').addEventListener('click', rejectCurrentLyrics);
-$('btn-spike').addEventListener('click', () => spike.toggle());
+$('btn-spike').addEventListener('click', toggleSpike);
+$('btn-editor').addEventListener('click', toggleEditor);
+
+// The two panels share Space, so only one is open at a time.
+function toggleSpike() {
+  if (editor.visible) editor.toggle();
+  spike.toggle();
+}
+function toggleEditor() {
+  if (spike.visible) spike.toggle();
+  editor.toggle();
+}
 $('btn-disconnect').addEventListener('click', () => {
   auth.logout();
   app.source?.stop();
@@ -288,10 +387,20 @@ window.addEventListener('keydown', (e) => {
   if (e.target.closest?.('input, textarea')) return;
   if (e.ctrlKey || e.altKey || e.metaKey) return;
   const k = e.key.toLowerCase();
-  if (k === 'f') toggleFullscreen();
+  if (e.code === 'BracketLeft' || e.code === 'BracketRight') {
+    const step = e.shiftKey ? sync.FINE_STEP_MS : sync.OFFSET_STEP_MS;
+    nudgeSongOffset(e.code === 'BracketLeft' ? step : -step);
+  } else if (k === 'f') toggleFullscreen();
   else if (k === 'm') toggleMode();
-  else if (k === 'd') spike.toggle();
-  else if (k === ' ' && spike.visible) {
+  else if (k === 'd') toggleSpike();
+  else if (k === 'e') toggleEditor();
+  else if (k === ' ' && editor.visible) {
+    e.preventDefault();
+    if (!e.repeat) editor.tap(e.timeStamp);
+  } else if (k === 'backspace' && editor.visible) {
+    e.preventDefault();
+    editor.undo();
+  } else if (k === ' ' && spike.visible) {
     e.preventDefault();
     spike.tap();
   } else if (app.source?.name === 'demo' && (k === 'p' || k === 'arrowleft' || k === 'arrowright')) {
@@ -317,10 +426,11 @@ window.addEventListener('pointerdown', showControls);
 
 // ---- frame loop --------------------------------------------------------------
 
-function frame() {
-  const pos = app.clock.position();
-  renderer.draw(pos, { mode: app.mode, playing: app.clock.playing });
-  spike.frame(pos);
+function frame(now) {
+  latency.tick(now);
+  renderer.draw(drawPosition(), { mode: app.mode, playing: app.clock.playing });
+  spike.frame(app.clock.position());
+  editor.frame();
   requestAnimationFrame(frame);
 }
 
