@@ -73,6 +73,8 @@ export class SettingsPanel {
       <label class="field">Spread <input type="range" name="spread" min="0" max="100" step="5" value="${esc(g('spread'))}"> <b>${esc(g('spread'))}</b></label>
       <label class="field">Chaos <input type="range" name="chaos" min="0" max="100" step="5" value="${esc(g('chaos'))}"> <b>${esc(g('chaos'))}</b></label>
       <button type="button" data-set="resetSky">Reset sky to defaults</button>
+      <label class="check"><input type="checkbox" name="previewNext"${g('previewNext') ? ' checked' : ''}> Preview the next line as faint dots (constellation)</label>
+      <label class="check"><input type="checkbox" name="songMap"${g('songMap') ? ' checked' : ''}> Show the whole song as one map at the end (constellation)</label>
       <label class="check"><input type="checkbox" name="backgroundStars"${g('backgroundStars') ? ' checked' : ''}> Background stars</label>
       <label class="check"><input type="checkbox" name="reduceMotion"${g('reduceMotion') ? ' checked' : ''}> Reduce motion (no drift, twinkle or pop)</label>
       <label class="check"><input type="checkbox" name="fullFrameRate"${g('fullFrameRate') ? ' checked' : ''}> Match a fast screen's refresh rate (smoother on 120 Hz+, uses more power)</label>

@@ -49,6 +49,8 @@ const DEFAULTS = {
   backgroundStars: true,
   spread: 100, // 0..100: how much of the screen each line's stars may use
   chaos: 50, // 0..100: extra criss-cross links and longer jumps between stars
+  previewNext: true, // constellation: faint dots show where the next line's stars will appear
+  songMap: true, // constellation: when the last line is done, every star fades together into one song map
   fullFrameRate: false, // draw on every refresh of a 120/144 Hz screen instead of about 60 times a second
   get reduceMotion() {
     return prefersReducedMotion(); // follows Windows "Animation effects" until set here

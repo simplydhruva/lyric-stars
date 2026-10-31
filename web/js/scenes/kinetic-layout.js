@@ -11,23 +11,6 @@ const SPAN = 0.65; // the loudest word is MIN_SCALE + SPAN
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
-// A line's text with case and punctuation removed, so "Oh, baby!" and "oh baby" count as the same line.
-export function normalizeLine(line) {
-  return line.words
-    .map((w) => w.text.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ''))
-    .filter(Boolean)
-    .join(' ');
-}
-
-// How many times each line's text occurs in the song: an array parallel to `lines`. Lines that repeat are
-// the chorus for now; step 3 replaces this with proper chorus detection.
-export function repeatCounts(lines) {
-  const keys = lines.map(normalizeLine);
-  const seen = new Map();
-  for (const k of keys) if (k) seen.set(k, (seen.get(k) || 0) + 1);
-  return keys.map((k) => (k ? seen.get(k) : 0));
-}
-
 // "Loudness" guess for each word, 0..1. We have no audio, so a long word and a word held for a long time
 // count as stressed, and short words ("a", "to") don't. Words with no known duration are judged on length alone.
 export function wordScores(words) {

@@ -191,6 +191,8 @@ function applyVisuals() {
     backgroundStars: g('backgroundStars'),
     spread: g('spread'),
     chaos: g('chaos'),
+    previewNext: g('previewNext'),
+    songMap: g('songMap'),
     transparent: app.desktop?.style === 'overlay',
     palette: app.palette,
   });

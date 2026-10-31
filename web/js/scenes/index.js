@@ -13,6 +13,7 @@
 //   mode                    'word' | 'line' (M: word by word or line by line; the stack and kinetic scenes follow it too)
 //   reduceMotion, playing, quiet
 //   seed, spread, chaos     the sky's layout inputs (constellation)
+//   previewNext, songMap    settings for the constellation: faint dots for the next line; the song map at the end
 import { createConstellation } from './constellation.js';
 import { createKaraoke } from './karaoke.js';
 import { createStack } from './stack.js';

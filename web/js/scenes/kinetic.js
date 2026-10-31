@@ -2,7 +2,8 @@
 // line is the biggest, and lines that repeat in the song (the chorus) are drawn bigger. A word is fully
 // visible on its start frame; only its size and position settle afterwards. Line mode (M) brings the whole
 // line in at once. When the next line starts, the old one fades out. Pure function of the playback position.
-import { exitAlpha, layoutKinetic, loudestIndex, repeatCounts, revealedEnd, tilt, wordEntrance, wordScales } from './kinetic-layout.js';
+import { detectChorus } from './chorus.js';
+import { exitAlpha, layoutKinetic, loudestIndex, revealedEnd, tilt, wordEntrance, wordScales } from './kinetic-layout.js';
 
 const rgba = ([r, g, b], a) => `rgba(${r},${g},${b},${a})`;
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -28,13 +29,13 @@ export function createKinetic() {
       layoutKey = { lines: frame.lines, values: key };
     }
     if (repeatsFor !== frame.lines) {
-      repeats = repeatCounts(frame.lines);
+      repeats = detectChorus(frame.lines);
       repeatsFor = frame.lines;
     }
     let l = layouts.get(index);
     if (!l) {
       const words = frame.lines[index].words;
-      const scales = wordScales(words, repeats[index] >= 2);
+      const scales = wordScales(words, repeats[index]?.chorus);
       l = { scales, loudest: loudestIndex(words), fit: layoutKinetic(words.map((x) => x.text), scales, measureAt(frame), { maxW, baseFont }) };
       layouts.set(index, l);
     }

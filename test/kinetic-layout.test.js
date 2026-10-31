@@ -1,22 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeLine, repeatCounts, wordScores, wordScales, loudestIndex, layoutKinetic, wordEntrance, exitAlpha, tilt, revealedEnd, CHORUS_BOOST, ENTER_MS, EXIT_MS } from '../web/js/scenes/kinetic-layout.js';
+import { wordScores, wordScales, loudestIndex, layoutKinetic, wordEntrance, exitAlpha, tilt, revealedEnd, CHORUS_BOOST, ENTER_MS, EXIT_MS } from '../web/js/scenes/kinetic-layout.js';
 import { MIN_FONT_SCALE } from '../web/js/scenes/karaoke-layout.js';
 
 const w = (text, start = 0, end = 0) => ({ text, start, end });
 const line = (...texts) => ({ words: texts.map((t) => w(t)) });
 const measure = (text, font) => text.length * font;
-
-test('normalizeLine ignores case and punctuation', () => {
-  assert.equal(normalizeLine(line('Oh,', 'baby!')), 'oh baby');
-  assert.equal(normalizeLine(line('OH', 'baby')), 'oh baby');
-  assert.equal(normalizeLine(line('...')), '');
-});
-
-test('repeatCounts finds lines that come round again (the chorus)', () => {
-  const lines = [line('Oh,', 'baby'), line('Verse', 'one'), line('oh', 'baby!'), line('Verse', 'two'), line('OH', 'BABY'), { words: [] }];
-  assert.deepEqual(repeatCounts(lines), [3, 1, 3, 1, 3, 0]);
-});
 
 test('longer and longer-held words score higher; short words score low', () => {
   const words = [w('I', 0, 200), w('remember', 200, 1400), w('you', 1400, 1600)];

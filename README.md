@@ -146,7 +146,8 @@ web/js/editor.js          tap-to-sync editor
 web/js/harness.js         scores the estimator; tools/harness.mjs runs it on test/reference
 web/js/renderer.js        canvas host: sizing, background, idle-frame skipping, hands lyrics to the active scene
 web/js/scenes/            index.js (registry, frame object), constellation.js, karaoke.js, stack.js, kinetic.js,
-                          karaoke-layout.js / stack-layout.js / kinetic-layout.js (pure maths), line-draw.js (shared line drawing)
+                          karaoke-layout.js / stack-layout.js / kinetic-layout.js (pure maths), line-draw.js (shared line drawing),
+                          chorus.js (finds repeated lines: the constellation brings their stars back bigger, kinetic makes them bigger)
 tools/visual.mjs          pixel check: renders fixed frames to PNGs (--out) or compares against them (--compare)
 tools/lib/headless.mjs    shared headless-browser helpers for the browser checks below
 tools/lib/fake-spotify.mjs  scripted fake Spotify and lyrics service (songs, no-lyrics song, ad, podcast; pause, seek, skip)

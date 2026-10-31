@@ -125,6 +125,8 @@ export class Renderer {
     f.seed = this.seed;
     f.spread = this.spread;
     f.chaos = this.chaos;
+    f.previewNext = this.opts.previewNext !== false;
+    f.songMap = this.opts.songMap !== false;
     this._scene(this.sceneId).draw(f);
     return true;
   }
