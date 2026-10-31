@@ -63,6 +63,9 @@ export class SettingsPanel {
         .map(([k, f]) => `<option value="${k}"${k === g('font') ? ' selected' : ''}>${esc(f.name)}</option>`)
         .join('')}</select>
       <h3>Sky</h3>
+      <label class="field">Spread <input type="range" name="spread" min="0" max="100" step="5" value="${esc(g('spread'))}"> <b>${esc(g('spread'))}</b></label>
+      <label class="field">Chaos <input type="range" name="chaos" min="0" max="100" step="5" value="${esc(g('chaos'))}"> <b>${esc(g('chaos'))}</b></label>
+      <button type="button" data-set="resetSky">Reset sky to defaults</button>
       <label class="check"><input type="checkbox" name="backgroundStars"${g('backgroundStars') ? ' checked' : ''}> Background stars</label>
       <label class="check"><input type="checkbox" name="reduceMotion"${g('reduceMotion') ? ' checked' : ''}> Reduce motion (no drift, twinkle or pop)</label>
       <label class="check"><input type="checkbox" name="fullFrameRate"${g('fullFrameRate') ? ' checked' : ''}> Match a fast screen's refresh rate (smoother on 120 Hz+, uses more power)</label>
@@ -148,7 +151,11 @@ export class SettingsPanel {
     const name = input.name;
     if (!name) return;
     if (name.startsWith('desk:')) return this._desktopChanged(name.slice(5), input);
-    const value = input.type === 'checkbox' ? input.checked : input.value;
+    let value = input.type === 'checkbox' ? input.checked : input.value;
+    if (input.type === 'range') {
+      value = Number(value);
+      input.nextElementSibling.textContent = String(value);
+    }
     settings.set(name, value);
     this.host.onChange(name);
     if (name === 'theme' || name === 'source') this.render(); // custom color, source help
@@ -165,6 +172,13 @@ export class SettingsPanel {
   async clearCache() {
     await this.host.clearCache();
     this._showCache();
+  }
+
+  resetSky() {
+    settings.set('spread', 100);
+    settings.set('chaos', 50);
+    this.host.onChange('spread');
+    this.render();
   }
 
   disconnect() {

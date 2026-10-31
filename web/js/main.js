@@ -40,6 +40,7 @@ export const app = {
   authMessage: '',
   mode: settings.get('mode'),
   loadSeq: 0,
+  plays: Math.floor(Math.random() * 1e9), // counts track changes; seeds each play's sky
   retryTimer: null,
   desktop: desktop?.info() || null, // { style, overlay, update, ... } from the desktop shell
 };
@@ -117,6 +118,8 @@ function applyVisuals() {
     font: g('font'),
     reduceMotion: g('reduceMotion'),
     backgroundStars: g('backgroundStars'),
+    spread: g('spread'),
+    chaos: g('chaos'),
     transparent: app.desktop?.style === 'overlay',
   });
   updateCorner();
@@ -253,6 +256,7 @@ function onSample(sample) {
 
 function onTrackChange(track) {
   app.track = track;
+  app.plays++;
   app.lyrics = null;
   app.timeline = null;
   app.baseLines = null;
@@ -310,7 +314,7 @@ function rebuildTimeline() {
   const lines = app.record ? corrections.apply(app.baseLines, app.record) : app.baseLines;
   if (app.record?.ownLyrics) app.lyrics = { ...app.lyrics, status: 'synced', own: true };
   app.timeline = lines ? buildTimeline(lines, { trackDurationMs: app.track?.durationMs }) : null;
-  renderer.setTimeline(app.timeline);
+  renderer.setTimeline(app.timeline, `${app.track?.key}|${app.plays}`);
   editor.paint();
   updateView();
 }

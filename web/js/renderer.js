@@ -3,6 +3,7 @@
 import { lineIndexAt } from './lyrics/lrc.js';
 import { Background } from './background.js';
 import { makeTheme, THEMES, fontCss } from './theme.js';
+import { placeLine, hash } from './sky-layout.js';
 
 const CENTER = [255, 250, 235];
 const FADE_OUT_MS = 700;
@@ -16,21 +17,6 @@ const IDLE_FRAME_MS = 50; // when only the background moves, 20 frames a second 
 const rgba = ([r, g, b], a) => `rgba(${r},${g},${b},${a})`;
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 const easeOut = (t) => 1 - Math.pow(1 - t, 3);
-
-function hash(str) {
-  let h = 2166136261;
-  for (let i = 0; i < str.length; i++) h = Math.imul(h ^ str.charCodeAt(i), 16777619);
-  return h >>> 0;
-}
-
-function rng(seed) {
-  let s = seed || 1;
-  return () => {
-    s = (Math.imul(s ^ (s >>> 15), 1 | s) + 0x6d2b79f5) | 0;
-    let t = Math.imul(s ^ (s >>> 7), 61 | s) ^ s;
-    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
-  };
-}
 
 function makeGlowSprite(color) {
   const size = 128;
@@ -70,12 +56,21 @@ export class Renderer {
     this.lastDrawAt = 0;
     this.timeline = null;
     this.layouts = new Map();
+    this.seed = '';
+    this.spread = 100;
+    this.chaos = 50;
     this.size = { w: 0, h: 0, dpr: 0 };
     this.lastFrameKey = '';
   }
 
-  // theme: from theme.js; font: a FONTS key; transparent: for the overlay (no black, no background).
-  configure({ theme, font, ...opts }) {
+  // theme: from theme.js; font: a FONTS key; transparent: for the overlay (no black, no background);
+  // spread, chaos: 0..100.
+  configure({ theme, font, spread, chaos, ...opts }) {
+    if (spread != null && chaos != null && (Number(spread) !== this.spread || Number(chaos) !== this.chaos)) {
+      this.spread = Number(spread);
+      this.chaos = Number(chaos);
+      this.layouts.clear();
+    }
     if (theme && theme !== this.theme) {
       if (theme.star.join() !== this.theme.star.join()) this.glow = makeGlowSprite(theme.star);
       this.theme = theme;
@@ -88,8 +83,10 @@ export class Renderer {
     this.lastFrameKey = '';
   }
 
-  setTimeline(timeline) {
+  // seed: track and play, so each play of a song gets its own sky.
+  setTimeline(timeline, seed = '') {
     this.timeline = timeline;
+    this.seed = seed;
     this.layouts.clear();
     this.lastFrameKey = '';
   }
@@ -106,70 +103,32 @@ export class Renderer {
     return true;
   }
 
-  // Stable layout for one line: same text and size always give the same sky.
+  // Each line's sky depends on the line before it (fading stars, regions used),
+  // so layouts are built in order from the last one cached.
   _layout(index) {
-    let layout = this.layouts.get(index);
-    if (layout) return layout;
-    const line = this.timeline[index];
+    let i = index;
+    while (i > 0 && !this.layouts.has(i - 1)) i--;
+    for (; i <= index; i++) if (!this.layouts.has(i)) this.layouts.set(i, this._place(i, this.layouts.get(i - 1)));
+    return this.layouts.get(index);
+  }
+
+  _place(index, prev) {
     const { w, h } = this.size;
     const ctx = this.ctx;
-    const n = line.words.length;
-    let font = clamp(Math.min(w, h * 1.6) * 0.03, 14, 34);
-    const marginX = Math.max(24, w * 0.06);
-    const maxRow = w - marginX * 2;
-
-    let widths, rows;
-    for (let attempt = 0; attempt < 6; attempt++) {
-      ctx.font = `600 ${font}px ${this.fontFamily}`;
-      widths = line.words.map((wd) => ctx.measureText(wd.text).width);
-      const gap = font * 1.5;
-      const rowWidth = (from, to) =>
-        widths.slice(from, to).reduce((a, b) => a + b, 0) + gap * Math.max(0, to - from - 1);
-      const total = rowWidth(0, n);
-      if (total <= maxRow && n <= 9) {
-        rows = [[0, n]];
-      } else {
-        // Two rows, split where the wider row is narrowest.
-        let best = 1;
-        let bestW = Infinity;
-        for (let s = 1; s < n; s++) {
-          const m = Math.max(rowWidth(0, s), rowWidth(s, n));
-          if (m < bestW) {
-            bestW = m;
-            best = s;
-          }
-        }
-        rows = n > 1 ? [[0, best], [best, n]] : [[0, n]];
-      }
-      const widest = Math.max(...rows.map(([a, b]) => rowWidth(a, b)));
-      if (widest <= maxRow || font <= 10 || attempt === 5) {
-        layout = { font, gap, rows, rowWidth };
-        break;
-      }
-      font = Math.max(10, font * (maxRow / widest) * 0.97);
-    }
-
-    const rand = rng(hash(line.text));
-    const rowGap = rows.length === 2 ? clamp(h * 0.16, font * 5, font * 8) : 0;
-    const ampMax = rows.length === 2 ? Math.max(font * 0.3, (rowGap - font * 4.2) / 2) : h * 0.09;
-    const amp = Math.min(ampMax, h * 0.09, font * 3);
-    const stars = [];
-    rows.forEach(([a, b], r) => {
-      const rowY = h / 2 + (rows.length === 2 ? (r === 0 ? -rowGap / 2 : rowGap / 2) : 0);
-      const phase = rand() * Math.PI * 2;
-      const freq = 0.9 + rand() * 0.9;
-      let x = (w - layout.rowWidth(a, b)) / 2;
-      for (let k = a; k < b; k++) {
-        const cx = x + widths[k] / 2;
-        const dy = amp * (0.75 * Math.sin(phase + (k - a) * freq) + 0.25 * (rand() * 2 - 1));
-        const y = clamp(rowY + dy, font * 3, h - font * 3);
-        stars.push({ x: cx, y, row: r, labelBelow: dy > 0 });
-        x += widths[k] + layout.gap;
-      }
+    return placeLine({
+      words: this.timeline[index].words,
+      w,
+      h,
+      seed: hash(`${this.seed}|${index}`),
+      prev: prev || null,
+      baseFont: clamp(Math.min(w, h * 1.6) * 0.03, 14, 34),
+      spread: this.spread / 100,
+      chaos: this.chaos / 100,
+      measure: (text, font) => {
+        ctx.font = `600 ${font}px ${this.fontFamily}`;
+        return ctx.measureText(text).width;
+      },
     });
-    layout = { ...layout, stars };
-    this.layouts.set(index, layout);
-    return layout;
   }
 
   // Returns false when nothing changed and the frame was skipped.
@@ -226,7 +185,7 @@ export class Renderer {
 
   _drawSky(index, pos, alpha, mode, leaving) {
     const line = this.timeline[index];
-    const { stars, font } = this._layout(index);
+    const { stars, links, font } = this._layout(index);
     const ctx = this.ctx;
     const { star: STAR, core: CORE, label: LABEL } = this.theme;
     const still = this.opts.reduceMotion;
@@ -240,11 +199,12 @@ export class Renderer {
     // Links first, so stars sit on top of them.
     ctx.lineWidth = 1;
     ctx.lineCap = 'round';
-    for (let k = 1; k < visible; k++) {
-      const a = stars[k - 1];
-      const b = stars[k];
-      if (a.row !== b.row) continue;
-      const start = mode === 'line' ? line.time + k * 35 : appear(k);
+    // Each link draws from the older star to the new one as the new word appears.
+    for (const { from, to } of links) {
+      if (to >= visible) continue;
+      const a = stars[from];
+      const b = stars[to];
+      const start = mode === 'line' ? line.time + to * 35 : appear(to);
       const p = leaving ? 1 : easeOut(clamp((pos - start) / LINK_MS, 0, 1));
       if (p <= 0) continue;
       // Reduce motion: links fade in place instead of drawing across.
