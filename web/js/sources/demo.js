@@ -1,5 +1,5 @@
 // Demo source for testing visuals without Spotify: open /?demo
-// Optional: /?demo&title=Yellow&artist=Coldplay&album=Parachutes&duration=268&start=20
+// Optional: /?demo&title=Yellow&artist=Coldplay&album=Parachutes&duration=268&start=20&art=https://i.scdn.co/image/...
 // There is no audio, so the clock simply runs from the start position.
 export class DemoSource {
   constructor({ onSample, onProblem }) {
@@ -14,6 +14,8 @@ export class DemoSource {
       artist: q.get('artist') || 'Coldplay',
       album: q.get('album') ?? 'Parachutes',
       durationMs: Number(q.get('duration') || 268) * 1000,
+      // Album art for palette testing; only Spotify's image host is allowed by the page's CSP.
+      art: /^https:\/\/i\.scdn\.co\//.test(q.get('art') || '') ? q.get('art') : undefined,
     };
     this.startPos = Number(q.get('start') || 0) * 1000;
     this.playing = true;

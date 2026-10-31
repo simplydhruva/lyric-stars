@@ -14,10 +14,11 @@ npm run harness  # timing report for the reference songs (add -- --update-baseli
 
 Open http://127.0.0.1:5173/ (localhost redirects there, because Spotify only accepts loopback IPs).
 
-- **Keys:** `F` fullscreen, `M` word/line mode, `D` diagnostics, `E` sync editor,
+- **Keys:** `S` settings, `F` fullscreen, `M` word/line mode, `D` diagnostics, `E` sync editor, `Esc` closes panels,
   `[` / `]` lyrics earlier / later for this song (50 ms; hold Shift for 10 ms).
 - **Demo without Spotify:** http://127.0.0.1:5173/?demo&start=30 plays Coldplay "Yellow" with no audio.
   `P` pauses, arrow keys seek 10 s. Other songs: `?demo&title=...&artist=...&album=...&duration=<seconds>`.
+  Add `&art=https://i.scdn.co/image/...` to try album colors.
 - **Lyric cache:** `%APPDATA%\LyricStars\cache` (override with `LYRICSTARS_DATA`). Your timings live in
   `%APPDATA%\LyricStars\timings` and are not removed when the cache is cleared.
 
@@ -36,6 +37,17 @@ Open http://127.0.0.1:5173/ (localhost redirects there, because Spotify only acc
   `npm test` fails if the average error gets worse by more than 5 ms.
 - Rebuild the syllable table with `node tools/build-syllables.mjs path/to/cmudict.dict`.
 
+## Look
+
+- **Settings (`S`):** lyric source, word/line mode, theme (Gold, Ice, Rose or a custom color), album colors,
+  font (system fonts only), background stars, reduce motion, corner title/art, global offset, lyric cache, disconnect.
+- **Album colors** (off by default): two or three colors are read from the 64 px cover; grey or
+  black-and-white covers fall back to the chosen theme. Colors are lifted so they always glow on black.
+- **Background:** a faint nebula in the theme colors and two layers of dust stars drifting at different speeds.
+  While paused it repaints at about 20 fps; with reduce motion on (default follows Windows "Animation effects")
+  nothing moves and a paused sky does not repaint at all.
+- **Performance:** Diagnostics (`D`) → Rendering shows paints per second, paint cost and late frames.
+
 ## Layout
 
 ```
@@ -53,6 +65,10 @@ web/js/corrections.js     your timings: merge, import, export (also the referenc
 web/js/editor.js          tap-to-sync editor
 web/js/harness.js         scores the estimator; tools/harness.mjs runs it on test/reference
 web/js/renderer.js        canvas constellation
+web/js/background.js      nebula, drifting and twinkling background stars
+web/js/theme.js           themes, fonts, album palette extraction (palette.js loads the image)
+web/js/settings-panel.js  settings panel
+web/js/perf.js            paint statistics for diagnostics
 web/js/states.js          every state's message and fix button
 web/js/spike.js           diagnostics: endpoint check, source comparison, tap test
 ```

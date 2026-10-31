@@ -14,6 +14,10 @@ import { SpikePanel } from './spike.js';
 import { SyncEditor } from './editor.js';
 import * as corrections from './corrections.js';
 import * as sync from './sync.js';
+import { SettingsPanel } from './settings-panel.js';
+import { resolveTheme } from './theme.js';
+import { albumPalette } from './palette.js';
+import { FrameStats } from './perf.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -26,6 +30,7 @@ export const app = {
   timeline: null,
   baseLines: null, // timed lines from the lyric service, before the user's timings
   record: null, // the user's timings for this track (corrections.js)
+  palette: null, // album art colors for this track, when album colors are on
   problem: null, // from the source
   authState: null, // 'setup' | 'connect' | error code
   authMessage: '',
@@ -35,6 +40,7 @@ export const app = {
 };
 
 const renderer = new Renderer($('sky'));
+const frameStats = (app.frameStats = new FrameStats());
 const spike = new SpikePanel($('spike'), app);
 const latency = new sync.DisplayLatency();
 
@@ -54,12 +60,71 @@ const editor = new SyncEditor($('editor'), {
   offsets: () => ({ song: sync.songOffset(app.track?.key), global: sync.globalOffset(), display: latency.ms }),
   change: (record) => saveRecord(record),
   importText: (text) => importTimings(text),
-  nudgeGlobal: (ms) => {
-    const v = sync.setGlobalOffset(sync.globalOffset() + ms);
-    toast(`Global offset ${sync.formatOffset(v)}`);
-    editor.paint();
-  },
+  nudgeGlobal,
 });
+
+const settingsPanel = new SettingsPanel($('settings'), {
+  onChange: onSettingChange,
+  globalOffset: sync.globalOffset,
+  nudgeGlobal,
+  cacheStats: cache.stats,
+  clearCache: cache.clearAll,
+  canDisconnect: () => settings.get('source') === 'spotify' && auth.isLoggedIn(),
+  disconnect,
+});
+
+function nudgeGlobal(ms) {
+  const v = sync.setGlobalOffset(sync.globalOffset() + ms);
+  toast(`Global offset ${sync.formatOffset(v)}`);
+  editor.paint();
+  return v;
+}
+
+// ---- visuals ---------------------------------------------------------------
+
+function applyVisuals() {
+  const g = (k) => settings.get(k);
+  renderer.configure({
+    theme: resolveTheme({ theme: g('theme'), customColor: g('customColor'), albumColors: g('albumColors') }, app.palette),
+    font: g('font'),
+    reduceMotion: g('reduceMotion'),
+    backgroundStars: g('backgroundStars'),
+  });
+  updateCorner();
+}
+
+function loadPalette(track) {
+  app.palette = null;
+  if (!track?.art || !settings.get('albumColors')) return;
+  albumPalette(track.art).then((palette) => {
+    if (app.track?.key !== track.key) return;
+    app.palette = palette;
+    applyVisuals();
+  });
+}
+
+function updateCorner() {
+  const mode = settings.get('cornerInfo');
+  const t = app.track;
+  $('corner').hidden = mode === 'off' || !t;
+  if (!t) return;
+  $('corner-title').textContent = `${t.title} · ${t.artist}`;
+  const art = $('corner-art');
+  const showArt = mode === 'art' && Boolean(t.art);
+  art.hidden = !showArt;
+  if (showArt && art.getAttribute('src') !== t.art) art.src = t.art;
+}
+
+function onSettingChange(key) {
+  if (key === 'source') startSource();
+  else if (key === 'mode') {
+    app.mode = settings.get('mode');
+    updateView();
+  } else if (key === 'albumColors') {
+    loadPalette(app.track);
+    applyVisuals();
+  } else applyVisuals();
+}
 
 // ---- sources -------------------------------------------------------------
 
@@ -125,6 +190,8 @@ function onTrackChange(track) {
   app.record = null;
   renderer.setTimeline(null); // never leave the previous song's lyrics on screen
   editor.onTrackChange();
+  loadPalette(track);
+  applyVisuals();
   clearTimeout(app.retryTimer);
   if (track) loadLyrics(track);
 }
@@ -351,6 +418,7 @@ $('setup-form').addEventListener('submit', (e) => {
 function toggleMode() {
   app.mode = app.mode === 'word' ? 'line' : 'word';
   settings.set('mode', app.mode);
+  settingsPanel.render();
   updateView();
 }
 
@@ -374,17 +442,20 @@ function toggleEditor() {
   if (spike.visible) spike.toggle();
   editor.toggle();
 }
-$('btn-disconnect').addEventListener('click', () => {
+$('btn-settings').addEventListener('click', () => settingsPanel.toggle());
+$('btn-disconnect').addEventListener('click', disconnect);
+
+function disconnect() {
   auth.logout();
   app.source?.stop();
   app.source = null;
   onTrackChange(null);
   app.playback = null;
   setAuthState('connect');
-});
+}
 
 window.addEventListener('keydown', (e) => {
-  if (e.target.closest?.('input, textarea')) return;
+  if (e.target.closest?.('input, textarea, select')) return;
   if (e.ctrlKey || e.altKey || e.metaKey) return;
   const k = e.key.toLowerCase();
   if (e.code === 'BracketLeft' || e.code === 'BracketRight') {
@@ -394,6 +465,12 @@ window.addEventListener('keydown', (e) => {
   else if (k === 'm') toggleMode();
   else if (k === 'd') toggleSpike();
   else if (k === 'e') toggleEditor();
+  else if (k === 's') settingsPanel.toggle();
+  else if (k === 'escape' && (settingsPanel.visible || editor.visible || spike.visible)) {
+    if (settingsPanel.visible) settingsPanel.toggle();
+    if (editor.visible) editor.toggle();
+    if (spike.visible) spike.toggle();
+  }
   else if (k === ' ' && editor.visible) {
     e.preventDefault();
     if (!e.repeat) editor.tap(e.timeStamp);
@@ -428,7 +505,8 @@ window.addEventListener('pointerdown', showControls);
 
 function frame(now) {
   latency.tick(now);
-  renderer.draw(drawPosition(), { mode: app.mode, playing: app.clock.playing });
+  const t0 = performance.now();
+  if (renderer.draw(drawPosition(), { mode: app.mode, playing: app.clock.playing, now })) frameStats.add(now, performance.now() - t0);
   spike.frame(app.clock.position());
   editor.frame();
   requestAnimationFrame(frame);
@@ -438,6 +516,9 @@ function frame(now) {
 
 async function boot() {
   showControls();
+  applyVisuals();
+  // Follow Windows "Animation effects" while the user hasn't chosen.
+  matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change', applyVisuals);
   try {
     await auth.handleRedirect();
     app.authState = null;

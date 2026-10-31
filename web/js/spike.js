@@ -227,6 +227,8 @@ export class SpikePanel {
       <h2>Spotify endpoint access</h2>
       <div data-part="endpoint"></div>
       <div class="row"><button data-spike="checkEndpoint">Check now</button></div>
+      <h2>Rendering</h2>
+      <div data-part="render"></div>
       <h2>Sources</h2>
       <div data-part="sources"></div>
       <div class="row"><button data-spike="compare" data-part="compare"></button></div>
@@ -262,6 +264,11 @@ export class SpikePanel {
         .join('') + `<p>Checked ${this.endpoint.at}</p>`;
     }
 
+    const fs = app.frameStats?.summary(performance.now());
+    const render = fs
+      ? `<p>${fs.fps.toFixed(0)} paints/s · ${fs.meanMs.toFixed(2)} ms average, ${fs.p95Ms.toFixed(2)} ms p95 · ${fs.longFrames} late frames (2 s) · ${innerWidth}×${innerHeight} @${devicePixelRatio}x</p>`
+      : '';
+
     const iv = [...this.smtc.intervals].sort((a, b) => a - b);
     const smtc = iv.length
       ? `<p>Media session position updates every ~${(iv[iv.length >> 1] / 1000).toFixed(2)} s (median of ${iv.length}). Positions in between are extrapolated locally.</p>`
@@ -284,6 +291,7 @@ export class SpikePanel {
       <p>${t ? `${esc(t.title)} · ${esc(t.artist)} · ${time(t.durationMs)}` : 'No track'}</p>
       <p>Lyrics: ${esc(app.lyrics?.status || '–')}${rec ? ` · LRCLIB #${rec.id} (${rec.duration}s)` : ''}${app.lyrics?.offline ? ' · from cache, offline' : ''}</p>`;
     this.parts.endpoint.innerHTML = endpoint;
+    this.parts.render.innerHTML = render;
     this.parts.sources.innerHTML = `
       <table>
         <tr><th>Source</th><th>State</th><th>Reported</th><th>Estimate</th><th>Drift</th><th>Resyncs</th><th>Age / RTT</th></tr>

@@ -26,9 +26,26 @@ export const store = {
   },
 };
 
+const prefersReducedMotion = () => {
+  try {
+    return matchMedia('(prefers-reduced-motion: reduce)').matches;
+  } catch {
+    return false;
+  }
+};
+
 const DEFAULTS = {
   source: 'spotify', // 'spotify' | 'media-session'
   mode: 'word', // 'word' | 'line'
+  theme: 'gold', // 'gold' | 'ice' | 'rose' | 'custom'
+  customColor: '#f4c76b',
+  albumColors: false, // tint each song's sky from its album art
+  font: 'segoe', // a key of FONTS in theme.js
+  backgroundStars: true,
+  get reduceMotion() {
+    return prefersReducedMotion(); // follows Windows "Animation effects" until set here
+  },
+  cornerInfo: 'off', // 'off' | 'title' | 'art'
 };
 
 export const settings = {

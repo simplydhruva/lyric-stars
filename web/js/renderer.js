@@ -1,16 +1,17 @@
 // Constellation renderer. Everything drawn is a pure function of the playback
 // position, so seeking, pausing and resuming never leave stale animation behind.
 import { lineIndexAt } from './lyrics/lrc.js';
+import { Background } from './background.js';
+import { makeTheme, THEMES, fontCss } from './theme.js';
 
-const GOLD = [244, 199, 107];
-const LABEL = [241, 217, 160];
+const CENTER = [255, 250, 235];
 const FADE_OUT_MS = 700;
 const LINK_MS = 250;
 const QUIET_AFTER_MS = 3500; // silence after a line before the sky starts to quiet
 const QUIET_FADE_MS = 2000;
 const QUIET_ALPHA = 0.12;
 const EMPHASIS_DECAY_MS = 450;
-const FONT = '"Segoe UI", system-ui, -apple-system, sans-serif';
+const IDLE_FRAME_MS = 50; // when only the background moves, 20 frames a second is plenty
 
 const rgba = ([r, g, b], a) => `rgba(${r},${g},${b},${a})`;
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -61,10 +62,29 @@ export class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
-    this.glow = makeGlowSprite(GOLD);
+    this.theme = makeTheme(THEMES.gold.base);
+    this.fontFamily = fontCss('segoe');
+    this.glow = makeGlowSprite(this.theme.star);
+    this.background = new Background();
+    this.opts = { reduceMotion: false, backgroundStars: true, transparent: false };
+    this.lastDrawAt = 0;
     this.timeline = null;
     this.layouts = new Map();
     this.size = { w: 0, h: 0, dpr: 0 };
+    this.lastFrameKey = '';
+  }
+
+  // theme: from theme.js; font: a FONTS key; transparent: for the overlay (no black, no background).
+  configure({ theme, font, ...opts }) {
+    if (theme && theme !== this.theme) {
+      if (theme.star.join() !== this.theme.star.join()) this.glow = makeGlowSprite(theme.star);
+      this.theme = theme;
+    }
+    if (font && fontCss(font) !== this.fontFamily) {
+      this.fontFamily = fontCss(font);
+      this.layouts.clear(); // word widths change
+    }
+    Object.assign(this.opts, opts);
     this.lastFrameKey = '';
   }
 
@@ -100,7 +120,7 @@ export class Renderer {
 
     let widths, rows;
     for (let attempt = 0; attempt < 6; attempt++) {
-      ctx.font = `600 ${font}px ${FONT}`;
+      ctx.font = `600 ${font}px ${this.fontFamily}`;
       widths = line.words.map((wd) => ctx.measureText(wd.text).width);
       const gap = font * 1.5;
       const rowWidth = (from, to) =>
@@ -153,17 +173,30 @@ export class Renderer {
   }
 
   // Returns false when nothing changed and the frame was skipped.
-  draw(pos, { mode = 'word', playing = true, quiet = false } = {}) {
+  draw(pos, { mode = 'word', playing = true, quiet = false, now = performance.now() } = {}) {
     const resized = this._resize();
     const { w, h, dpr } = this.size;
+    const { reduceMotion, backgroundStars, transparent } = this.opts;
+    const sky = backgroundStars && !transparent;
     const frameKey = `${Math.round(pos)}|${mode}|${quiet}|${w}x${h}@${dpr}`;
-    if (!resized && !playing && frameKey === this.lastFrameKey) return false;
+    if (!resized && !playing && frameKey === this.lastFrameKey) {
+      const moving = sky && this.background.animating(now, reduceMotion);
+      if (!moving || now - this.lastDrawAt < IDLE_FRAME_MS) return false;
+    }
     this.lastFrameKey = frameKey;
+    this.lastDrawAt = now;
 
     const ctx = this.ctx;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0, 0, w, h);
+    if (transparent) ctx.clearRect(0, 0, w, h);
+    else {
+      ctx.fillStyle = '#000';
+      ctx.fillRect(0, 0, w, h);
+    }
+    if (sky && w && h) {
+      this.background.prepare(w, h, dpr, this.theme, now);
+      this.background.draw(ctx, w, h, now, reduceMotion);
+    }
     if (!this.timeline || !this.timeline.length || !w || !h) return true;
 
     const lines = this.timeline;
@@ -195,6 +228,8 @@ export class Renderer {
     const line = this.timeline[index];
     const { stars, font } = this._layout(index);
     const ctx = this.ctx;
+    const { star: STAR, core: CORE, label: LABEL } = this.theme;
+    const still = this.opts.reduceMotion;
     const words = line.words;
     const appear = (k) => (mode === 'line' ? line.time : words[k].start);
 
@@ -212,10 +247,12 @@ export class Renderer {
       const start = mode === 'line' ? line.time + k * 35 : appear(k);
       const p = leaving ? 1 : easeOut(clamp((pos - start) / LINK_MS, 0, 1));
       if (p <= 0) continue;
-      ctx.strokeStyle = rgba(GOLD, 0.38 * alpha);
+      // Reduce motion: links fade in place instead of drawing across.
+      const reach = still ? 1 : p;
+      ctx.strokeStyle = rgba(STAR, 0.38 * alpha * (still ? p : 1));
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
-      ctx.lineTo(a.x + (b.x - a.x) * p, a.y + (b.y - a.y) * p);
+      ctx.lineTo(a.x + (b.x - a.x) * reach, a.y + (b.y - a.y) * reach);
       ctx.stroke();
     }
 
@@ -230,7 +267,7 @@ export class Renderer {
         e = pos < handoff ? 1 : clamp(1 - (pos - handoff) / EMPHASIS_DECAY_MS, 0, 1);
       }
       if (leaving) e *= 0.5;
-      const pop = leaving ? 1 : 1 + 0.55 * Math.exp(-Math.max(0, t) / 90);
+      const pop = leaving || still ? 1 : 1 + 0.55 * Math.exp(-Math.max(0, t) / 90);
       const r = font * (0.22 + 0.38 * e) * pop;
       const bright = (0.5 + 0.5 * e) * alpha;
 
@@ -241,16 +278,16 @@ export class Renderer {
       ctx.globalAlpha = 1;
       ctx.globalCompositeOperation = 'source-over';
 
-      ctx.fillStyle = rgba([255, 236, 190], bright);
+      ctx.fillStyle = rgba(CORE, bright);
       sparklePath(ctx, s.x, s.y, r * 1.6);
       ctx.fill();
-      ctx.fillStyle = rgba([255, 250, 235], bright);
+      ctx.fillStyle = rgba(CENTER, bright);
       ctx.beginPath();
       ctx.arc(s.x, s.y, Math.max(0.8, r * 0.22), 0, Math.PI * 2);
       ctx.fill();
 
       const bold = e > 0.5;
-      ctx.font = `${bold ? 600 : 400} ${font * (0.9 + 0.12 * e)}px ${FONT}`;
+      ctx.font = `${bold ? 600 : 400} ${font * (0.9 + 0.12 * e)}px ${this.fontFamily}`;
       ctx.textAlign = 'center';
       ctx.textBaseline = s.labelBelow ? 'top' : 'bottom';
       ctx.fillStyle = rgba(LABEL, (0.45 + 0.55 * e) * alpha);
