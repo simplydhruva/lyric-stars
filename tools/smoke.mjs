@@ -139,15 +139,19 @@ async function scenes() {
     await step('M switches the stack between word-by-word fill and the whole line lit', async () => {
       await js(`document.documentElement.dataset.scene`);
       await key('v', 'KeyV'); // karaoke
+      await waitFor('karaoke', async () => (await scene()) === 'karaoke');
       await key('v', 'KeyV'); // stack
       await waitFor('stack', async () => (await scene()) === 'stack');
       const before = await js(`document.getElementById('sky').toDataURL()`);
       await key('m', 'KeyM');
       await waitFor('the redraw', async () => (await js(`document.getElementById('sky').toDataURL()`)) !== before);
       await key('m', 'KeyM'); // back to word by word, and on round to the constellation
+      // Wait for each scene change before the next key, or a slow machine overshoots the constellation.
       for (let n = 0; n < SCENES.length; n++) {
-        if ((await scene()) === 'constellation') break;
+        const now = await scene();
+        if (now === 'constellation') break;
         await key('v', 'KeyV');
+        await waitFor('the next scene', async () => (await scene()) !== now);
       }
       await waitFor('constellation', async () => (await scene()) === 'constellation');
     });
