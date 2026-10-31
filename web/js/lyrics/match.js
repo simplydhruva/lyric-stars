@@ -5,16 +5,31 @@ export const DURATION_TOLERANCE_S = 3;
 
 // Suffixes that name the same recording (or the same words) and should not affect matching.
 const SAME_SONG_SUFFIX =
-  /\s+-\s+(?:\d{4}\s+)?(?:remaster(?:ed)?|re-?master(?:ed)?|mono|stereo|single version|album version|original mix|explicit|clean|bonus track|from\b.*|.*\bremaster(?:ed)?\b.*)(?:\s+\d{4})?\s*$/i;
+  /\s+-\s+(?:\d{4}\s+)?(?:remaster(?:ed)?|re-?master(?:ed)?|mono|stereo|single version|album version|radio edit|single edit|album edit|original mix|explicit|clean|bonus track|from\b.*|.*\bremaster(?:ed)?\b.*)(?:\s+\d{4})?\s*$/i;
+const FEAT_SUFFIX = /\s+-\s+(?:feat\.?|ft\.?|featuring|with)\s.*$/i;
 const FEAT_GROUP = /\s*[([](?:feat\.?|ft\.?|featuring|with)\s[^)\]]*[)\]]/gi;
-const REMASTER_GROUP = /\s*[([][^)\]]*\b(?:remaster(?:ed)?|explicit|mono|stereo)\b[^)\]]*[)\]]/gi;
+const REMASTER_GROUP = /\s*[([][^)\]]*\b(?:remaster(?:ed)?|explicit|mono|stereo|radio edit|single edit|album edit|single version|album version)\b[^)\]]*[)\]]/gi;
 
-export function normalizeTitle(title) {
+// The title as a person would write it, without the parts that only name the release:
+// "Song (feat. X) - Remastered 2011" and "Song - Radio Edit" both become "Song". Case and punctuation are kept,
+// so it can be sent to the lyrics service as it is.
+export function cleanTitle(title) {
   let t = String(title || '');
   t = t.replace(FEAT_GROUP, '').replace(REMASTER_GROUP, '');
   // Strip repeatedly: "Song - Remastered 2009 - Mono"
-  for (let i = 0; i < 3; i++) t = t.replace(SAME_SONG_SUFFIX, '');
-  return simplify(t);
+  for (let i = 0; i < 3; i++) t = t.replace(SAME_SONG_SUFFIX, '').replace(FEAT_SUFFIX, '');
+  return t.replace(/\s+/g, ' ').trim() || String(title || '').trim();
+}
+
+// The main artist: Spotify's first listed artist, with any "feat." tail removed. Names that contain "&" or ","
+// ("Simon & Garfunkel", "Tyler, The Creator") are single artists and stay whole.
+export function cleanArtist(track) {
+  const a = track.artists?.[0] || track.artist || '';
+  return String(a).replace(FEAT_GROUP, '').replace(/\s+(?:feat\.?|ft\.?|featuring)\s.*$/i, '').trim();
+}
+
+export function normalizeTitle(title) {
+  return simplify(cleanTitle(title));
 }
 
 export function simplify(s) {
@@ -59,6 +74,19 @@ export function artistsMatch(trackArtists, candidateArtist) {
 export function durationOk(trackDurationMs, candidateDurationS) {
   if (!trackDurationMs || candidateDurationS == null) return false;
   return Math.abs(trackDurationMs / 1000 - Number(candidateDurationS)) <= DURATION_TOLERANCE_S;
+}
+
+// Why a record is not accepted for this track, in a few words ('' when it is). Used for the lookup log.
+export function rejectReason(c, track, { strict = true, rejectIds = [] } = {}) {
+  if (!c) return 'empty';
+  if (rejectIds.includes(c.id)) return 'you marked these lyrics as wrong';
+  if (!durationOk(track.durationMs, c.duration)) {
+    const off = c.duration == null ? null : Math.abs(track.durationMs / 1000 - Number(c.duration));
+    return off == null ? 'no duration' : `duration ${Math.round(c.duration)} s is ${off.toFixed(1)} s off (limit ${DURATION_TOLERANCE_S} s)`;
+  }
+  if (strict && !titlesMatch(track.title, c.trackName)) return `title "${c.trackName}" does not match`;
+  if (strict && !artistsMatch(track.artists, c.artistName)) return `artist "${c.artistName}" does not match`;
+  return '';
 }
 
 // Pick the best LRCLIB record for a track, or null.

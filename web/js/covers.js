@@ -8,14 +8,15 @@ export const SMALL_PX = 64; // corner thumbnail and colours
 const nearest = (images, target) =>
   images.reduce((best, img) => (Math.abs((img.width || 0) - target) < Math.abs((best.width || 0) - target) ? img : best));
 
-// images: Spotify's [{url, width, height}]. The 640 px one for the cover and the 64 px one for thumbnails
+// images: Spotify's [{url, width, height}]. The largest one for the cover and the one nearest 64 px for thumbnails
 // (the closest sizes if those exact ones are missing; list order when sizes are not given).
 export function pickImages(images) {
   const list = (images || []).filter((i) => i?.url);
   if (!list.length) return {};
   if (!list.some((i) => i.width)) return { large: list[0].url, small: list.at(-1).url };
   const sized = list.filter((i) => i.width);
-  return { large: nearest(sized, LARGE_PX).url, small: nearest(sized, SMALL_PX).url };
+  const largest = sized.reduce((best, img) => (img.width > best.width ? img : best));
+  return { large: largest.url, small: nearest(sized, SMALL_PX).url };
 }
 
 // The album's images, else the track's own, else nothing (the scene draws a gold star).

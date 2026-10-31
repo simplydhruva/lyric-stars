@@ -221,13 +221,12 @@ function applyVisuals() {
     theme: resolveTheme({ theme: g('theme'), customColor: g('customColor'), albumColors: g('albumColors') }, app.palette),
     font: g('font'),
     reduceMotion: g('reduceMotion'),
-    backgroundStars: g('backgroundStars'),
+    glow: g('glow'),
+    backgroundEffects: g('backgroundEffects'),
     spread: g('spread'),
     chaos: g('chaos'),
     previewNext: g('previewNext'),
     songMap: g('songMap'),
-    nebula: g('nebula'),
-    shootingStars: g('shootingStars'),
     emotion: g('emotion'),
     beatPulse: g('beatPulse'),
     transparent: app.desktop?.style === 'overlay' || app.desktop?.style === 'mini',
@@ -235,6 +234,7 @@ function applyVisuals() {
     art: app.track?.artLarge || app.track?.art || null,
   });
   nowPlaying.setStill(Boolean(g('reduceMotion')));
+  nowPlaying.setLook({ glow: g('glow') / 100, effects: g('backgroundEffects') / 100 });
   caption.setOptions({ romanize: g('romanize'), translate: g('translate') });
   updateCorner();
 }
@@ -513,6 +513,7 @@ function onTrackChange(track) {
   loadPalette(track);
   applyVisuals();
   clearTimeout(app.retryTimer);
+  app.lyricsRetries = 0;
   if (track) {
     preloadCover(track); // ready by the time lyrics fail
     if (!track.artLarge) lookUpCover(track);
@@ -542,20 +543,37 @@ async function loadLyrics(track, { force = false } = {}) {
   if (seq !== app.loadSeq) return;
   if (cached?.fresh && !force) return applyLyrics(track, cached.entry, false);
 
+  if (force) app.lyricsRetries = 0;
   try {
     const result = await fetchLyrics(track, { rejectIds: cached?.entry.rejectIds || [] });
     if (seq !== app.loadSeq) return;
-    const entry = await cache.putLyrics(track, result, { rejectIds: cached?.entry.rejectIds || [] });
+    // Only a sure answer is saved. A "not found" where some request failed on the way is shown but not saved,
+    // and asked again later.
+    const entry = result.partial
+      ? { savedAt: Date.now(), track: { title: track.title, artists: track.artists }, result, rejectIds: cached?.entry.rejectIds || [] }
+      : await cache.putLyrics(track, result, { rejectIds: cached?.entry.rejectIds || [] });
+    console.info(`[lyrics] "${track.title}": ${result.status}${result.partial ? ' (not saved: a request failed on the way)' : ''}`);
+    if (result.partial) askAgainLater(track);
+    else app.lyricsRetries = 0;
     applyLyrics(track, entry, false);
   } catch (e) {
     if (seq !== app.loadSeq) return;
     if (!(e instanceof LyricsError)) throw e;
     recordError(`lyrics: ${e.kind} (${e.message})`);
+    console.info(`[lyrics] "${track.title}": ${e.kind}, ${e.message} (nothing saved)`);
     if (cached) return applyLyrics(track, cached.entry, e.kind === 'offline');
-    app.lyrics = { status: e.kind === 'offline' ? 'lyrics-offline' : 'lyrics-service-down' };
-    app.retryTimer = setTimeout(() => app.track?.key === track.key && loadLyrics(track), 15_000);
+    app.lyrics = { status: e.kind === 'offline' ? 'lyrics-offline' : 'lyrics-service-down', detail: e.message };
+    askAgainLater(track);
     updateView();
   }
+}
+
+// Asks the lyrics service again after 15 s, then 30 s, 60 s, up to 2 minutes, for as long as this song plays.
+function askAgainLater(track) {
+  clearTimeout(app.retryTimer);
+  const wait = Math.min(120_000, 15_000 * 2 ** (app.lyricsRetries || 0));
+  app.lyricsRetries = (app.lyricsRetries || 0) + 1;
+  app.retryTimer = setTimeout(() => app.track?.key === track.key && loadLyrics(track), wait);
 }
 
 async function applyLyrics(track, entry, offline) {
@@ -676,10 +694,13 @@ function chipKey() {
 // The scene's status text when it should be on screen, else null.
 function sceneFor(key) {
   if (!app.track || app.playback?.kind !== 'track') return null;
-  if (key === 'notfound' || key === 'instrumental') return nowPlaying.busy ? SCENE_LABELS.searching : SCENE_LABELS[key];
+  if (NO_LYRICS_STATES.includes(key)) return nowPlaying.busy ? SCENE_LABELS.searching : SCENE_LABELS[key];
   if (key == null && nowPlaying.busy && app.lyrics?.status === 'loading') return SCENE_LABELS.searching;
   return null;
 }
+
+// States with no lyrics to draw. The now-playing scene shows the cover and a one-line reason for each.
+const NO_LYRICS_STATES = ['notfound', 'instrumental', 'plain', 'lyrics-service-down', 'lyrics-offline'];
 
 const TIMING_LABELS ={ word: 'word-timed', yours: 'your timing', estimated: 'estimated' };
 
@@ -702,7 +723,7 @@ function updateView() {
   if (app.lyrics?.status !== 'loading') nowPlaying.busy = false;
   const sceneLabel = sceneFor(key);
   if (sceneLabel) {
-    nowPlaying.show({ track: app.track, identity: `${app.track.key}|${app.plays}`, label: sceneLabel, busy: nowPlaying.busy });
+    nowPlaying.show({ track: app.track, identity: `${app.track.key}|${app.plays}`, label: sceneLabel, busy: nowPlaying.busy, hint: app.lyrics?.detail || '' });
     nowPlaying.setPlaying(Boolean(app.playback.isPlaying));
   } else if (nowPlaying.visible) nowPlaying.hide();
   document.body.classList.toggle('np-on', Boolean(sceneLabel));

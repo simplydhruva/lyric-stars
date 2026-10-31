@@ -19,7 +19,7 @@ const offset = () => s.js(`(JSON.parse(localStorage.getItem('ls.offsets') || '{}
 try {
   // The drifting background would change the picture by itself; the flash is what is being measured.
   await s.goto(`${s.base}/?prep`);
-  await s.js(`localStorage.setItem('ls.settings', JSON.stringify({ backgroundStars: false }))`);
+  await s.js(`localStorage.setItem('ls.settings', JSON.stringify({ backgroundEffects: 0 }))`);
   await s.putCache(`lyrics:demo:${SONG.title}`, syncedEntry(SONG.title, SONG.artist, LYRICS));
   for (const scene of SCENE_IDS) {
     for (const reduce of [false, true]) {

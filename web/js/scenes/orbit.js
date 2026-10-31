@@ -10,7 +10,7 @@ export function createOrbit() {
   function cover(frame, cx, cy, r) {
     const { theme } = frame;
     const glow = ctx.createRadialGradient(cx, cy, r * 0.6, cx, cy, r * 1.8);
-    glow.addColorStop(0, rgba(theme.star, 0.3));
+    glow.addColorStop(0, rgba(theme.star, 0.3 * ((frame.glow ?? 0.25) * 2)));
     glow.addColorStop(1, rgba(theme.star, 0));
     ctx.fillStyle = glow;
     ctx.fillRect(cx - r * 2, cy - r * 2, r * 4, r * 4);
@@ -49,7 +49,7 @@ export function createOrbit() {
       ctx.textBaseline = 'middle';
       const a = (0.25 + 0.75 * s.depth) * (sung ? 1 : 0.55) * (quiet ? 0.35 : 1);
       ctx.shadowColor = rgba(theme.star, 0.8 * a);
-      ctx.shadowBlur = sung ? size * 0.4 * s.depth : 0;
+      ctx.shadowBlur = sung ? size * 0.4 * s.depth * ((frame.glow ?? 0.25) * 2) : 0;
       ctx.fillStyle = rgba(sung ? lift(theme.star, 0.35) : mix(theme.label, [0, 0, 0], 0.3), a);
       ctx.fillText(word.text, cx + s.x * rx, cy + s.y * ry * 0.5 + ry * 0.35);
       ctx.restore();

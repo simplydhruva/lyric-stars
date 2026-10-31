@@ -27,7 +27,7 @@ export function createLanterns() {
     ctx.translate(x, y);
     ctx.scale(k, k);
     const halo = ctx.createRadialGradient(0, 0, 0, 0, 0, bw * 0.95);
-    halo.addColorStop(0, rgba(theme.star, (0.34 + 0.2 * fresh) * alpha));
+    halo.addColorStop(0, rgba(theme.star, (0.34 + 0.2 * fresh) * alpha * ((frame.glow ?? 0.25) * 2)));
     halo.addColorStop(1, rgba(theme.star, 0));
     ctx.fillStyle = halo;
     ctx.fillRect(-bw, -bw, bw * 2, bw * 2);

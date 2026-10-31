@@ -98,16 +98,17 @@ export class Background {
   }
 
   // Draws onto ctx (already scaled to CSS pixels). `now` is wall time in ms.
-  draw(ctx, w, h, now, still) {
+  // strength 0..1 scales everything drawn here (the Background effects setting).
+  draw(ctx, w, h, now, still, strength = 1) {
     const t = still ? 0 : now / 1000;
     const fade = Math.min(1, (now - this.nebulaAt) / NEBULA_FADE_MS);
     if (this.oldNebula && fade < 1) {
-      ctx.globalAlpha = 1 - fade;
+      ctx.globalAlpha = strength * (1 - fade);
       ctx.drawImage(this.oldNebula, 0, 0, w, h);
     } else this.oldNebula = null;
-    ctx.globalAlpha = this.oldNebula ? fade : 1;
+    ctx.globalAlpha = strength * (this.oldNebula ? fade : 1);
     ctx.drawImage(this.nebula, 0, 0, w, h);
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = strength;
 
     // Drift right to left, wrapping: each layer is drawn twice side by side.
     for (const [img, speed] of [[this.far, FAR_PX_PER_S], [this.near, NEAR_PX_PER_S]]) {
@@ -120,11 +121,12 @@ export class Background {
       const a = still ? s.a : s.a * (0.35 + 0.65 * (0.5 + 0.5 * Math.sin(t * s.speed * 2 + s.phase)));
       let x = s.x - shift;
       if (x < 0) x += w;
-      ctx.fillStyle = rgba(s.color, a);
+      ctx.fillStyle = rgba(s.color, a * strength);
       ctx.beginPath();
       ctx.arc(x, s.y, s.r, 0, Math.PI * 2);
       ctx.fill();
     }
+    ctx.globalAlpha = 1;
   }
 
   // True while something still moves without the song moving.

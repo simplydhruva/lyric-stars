@@ -1,7 +1,7 @@
 // Lyric cache on disk, via the local server (/api/cache). Found lyrics are
 // kept until cleared; "not found" results expire after a day.
 
-export const NOT_FOUND_TTL_MS = 24 * 60 * 60 * 1000;
+export const NOT_FOUND_TTL_MS = 30 * 60 * 1000; // a true "not found" is only remembered briefly; the song may be added soon
 
 const memory = new Map();
 

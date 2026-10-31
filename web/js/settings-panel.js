@@ -73,16 +73,15 @@ export class SettingsPanel {
       <h3>Sky</h3>
       <label class="field">Spread <input type="range" name="spread" min="0" max="100" step="5" value="${esc(g('spread'))}"> <b>${esc(g('spread'))}</b></label>
       <label class="field">Chaos <input type="range" name="chaos" min="0" max="100" step="5" value="${esc(g('chaos'))}"> <b>${esc(g('chaos'))}</b></label>
+      <label class="field" title="The small glow on the star of the word being sung">Glow <input type="range" name="glow" min="0" max="100" step="5" value="${esc(g('glow'))}"> <b>${esc(g('glow'))}</b></label>
+      <label class="field" title="0 is plain black. Higher adds a faint nebula, drifting dust and shooting stars.">Background effects <input type="range" name="backgroundEffects" min="0" max="100" step="5" value="${esc(g('backgroundEffects'))}"> <b>${esc(g('backgroundEffects'))}</b></label>
       <button type="button" data-set="resetSky">Reset sky to defaults</button>
       <label class="check"><input type="checkbox" name="previewNext"${g('previewNext') ? ' checked' : ''}> Preview the next line as faint dots (constellation)</label>
       <label class="check"><input type="checkbox" name="songMap"${g('songMap') ? ' checked' : ''}> Show the whole song as one map at the end (constellation)</label>
-      <label class="check"><input type="checkbox" name="nebula"${g('nebula') ? ' checked' : ''}> Drifting nebula glow</label>
-      <label class="check"><input type="checkbox" name="shootingStars"${g('shootingStars') ? ' checked' : ''}> Shooting stars between lines</label>
       <label class="check"><input type="checkbox" name="emotion"${g('emotion') ? ' checked' : ''}> Glow on words like love, fire and night (some scenes)</label>
 ${this.host.desktop ? `      <label class="check"><input type="checkbox" name="beatPulse"${g('beatPulse') ? ' checked' : ''}> Pulse to the beat (listens to the sound your PC is playing)</label>
       <p>${esc(this.host.beatStatus?.() || '')}Windows only. Lyric Stars measures the loudness of your PC's audio output to find the beat; it records nothing and sends nothing. Windows may show a screen-capture indicator while this is on.</p>
-` : ''}      <label class="check"><input type="checkbox" name="backgroundStars"${g('backgroundStars') ? ' checked' : ''}> Background stars</label>
-      <label class="check"><input type="checkbox" name="reduceMotion"${g('reduceMotion') ? ' checked' : ''}> Reduce motion (no drift, twinkle or pop)</label>
+` : ''}      <label class="check"><input type="checkbox" name="reduceMotion"${g('reduceMotion') ? ' checked' : ''}> Reduce motion (no drift, twinkle or pop)</label>
       <label class="check"><input type="checkbox" name="fullFrameRate"${g('fullFrameRate') ? ' checked' : ''}> Match a fast screen's refresh rate (smoother on 120 Hz+, uses more power)</label>
       <h3>Lyric text</h3>
       <label class="check"><input type="checkbox" name="romanize"${g('romanize') ? ' checked' : ''}> Show Korean, Japanese (kana), Russian and Greek lyrics in Latin letters (works offline)</label>
@@ -197,6 +196,8 @@ ${this.host.desktop ? `      <label class="check"><input type="checkbox" name="b
   resetSky() {
     settings.set('spread', 100);
     settings.set('chaos', 50);
+    settings.set('glow', 25);
+    settings.set('backgroundEffects', 0);
     this.host.onChange('spread');
     this.render();
   }

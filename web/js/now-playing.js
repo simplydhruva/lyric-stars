@@ -64,7 +64,7 @@ export class NowPlaying {
   }
 
   // identity: changes when the song (or a replay of it) changes. label: the small status text.
-  show({ track, identity, label, busy }) {
+  show({ track, identity, label, busy, hint = '' }) {
     this.root.hidden = false;
     this.busy = busy;
     if (identity !== this.identity) {
@@ -83,6 +83,7 @@ export class NowPlaying {
     // The cover can arrive late (borrowed from the account), so check it every time.
     if ((track.artLarge || track.art || '') !== this.artKey) this._loadArt(track);
     this.el.label.textContent = label;
+    this.el.label.title = hint; // the exact reason, on hover
     this.el.retry.disabled = busy;
   }
 
@@ -97,6 +98,15 @@ export class NowPlaying {
     if (playing === this.playing) return;
     this.playing = playing;
     this.root.classList.toggle('paused', !playing);
+    this.dirty = true;
+  }
+
+  // glow 0..1: how strong the small halos around the drifting stars are. effects 0..1: the soft colour glow behind the
+  // cover and the pulsing ring; both stay off (a plain black scene) while Background effects is 0.
+  setLook({ glow = 0.25, effects = 0 } = {}) {
+    this.glowLevel = glow;
+    this.root.classList.toggle('fx', effects > 0);
+    this.root.style.setProperty('--np-fx', String(effects));
     this.dirty = true;
   }
 
@@ -170,8 +180,9 @@ export class NowPlaying {
       const py = half + y * half;
       const size = star.size * unit * 1.3;
       const reach = size * 4;
-      const halo = g.createRadialGradient(px, py, 0, px, py, reach);
-      halo.addColorStop(0, `rgba(${r},${gr},${b},${(glow * 0.5).toFixed(3)})`);
+      const haloK = (this.glowLevel ?? 0.25) * 2; // 0 = none
+      const halo = g.createRadialGradient(px, py, 0, px, py, reach * 0.75);
+      halo.addColorStop(0, `rgba(${r},${gr},${b},${(glow * 0.4 * haloK).toFixed(3)})`);
       halo.addColorStop(1, `rgba(${r},${gr},${b},0)`);
       g.fillStyle = halo;
       g.fillRect(px - reach, py - reach, reach * 2, reach * 2);

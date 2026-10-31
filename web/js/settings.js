@@ -46,7 +46,8 @@ const DEFAULTS = {
   customColor: '#f4c76b',
   albumColors: false, // tint each song's sky from its album art
   font: 'segoe', // a key of FONTS in theme.js
-  backgroundStars: true,
+  glow: 25, // 0..100: the small glow on the star of the word being sung (and the soft light in some scenes)
+  backgroundEffects: 0, // 0..100: nebula, drifting dust and shooting stars behind the lyrics. 0 = plain black
   spread: 100, // 0..100: how much of the screen each line's stars may use
   chaos: 50, // 0..100: extra criss-cross links and longer jumps between stars
   previewNext: true, // constellation: faint dots show where the next line's stars will appear
@@ -54,8 +55,6 @@ const DEFAULTS = {
   translate: false, // translated line from a free web service; off because it sends the lyric text there
   translateTo: 'en',
   beatPulse: false, // desktop app: stars and glow pulse to the beat of what the PC is playing (listens to system audio)
-  nebula: true, // slow drifting colour clouds behind the stars
-  shootingStars: true, // a streak across the sky in the gaps between lines
   emotion: true, // love, fire, night, rain and sun words get a small coloured glow (six scenes)
   songMap: true, // constellation: when the last line is done, every star fades together into one song map
   fullFrameRate: false, // draw on every refresh of a 120/144 Hz screen instead of about 60 times a second

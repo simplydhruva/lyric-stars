@@ -68,7 +68,7 @@ export function drawEmotion(ctx, frame, text, since, seed, size, alpha, paint) {
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
   ctx.shadowColor = rgba(c, 1 * a);
-  ctx.shadowBlur = size * 0.75 * look.blur;
+  ctx.shadowBlur = size * 0.75 * look.blur * ((frame.glow ?? 0.25) * 2);
   ctx.fillStyle = rgba(c, 0.5 * a);
   ctx.strokeStyle = rgba(c, 0.5 * a);
   paint();

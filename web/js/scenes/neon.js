@@ -34,7 +34,7 @@ export function createNeon() {
         const dt = pos - shownAt(word, line, mode);
         const on = neonFlicker(dt, li * 31 + i, reduceMotion || li !== frame.index) * alpha;
         ctx.shadowColor = rgba(theme.star, 0.95 * on);
-        ctx.shadowBlur = f.font * 0.55;
+        ctx.shadowBlur = f.font * 0.55 * ((frame.glow ?? 0.25) * 2);
         ctx.lineWidth = f.font * 0.075;
         ctx.strokeStyle = rgba(theme.star, 0.9 * on);
         ctx.strokeText(word.text, x, cy);
@@ -73,7 +73,7 @@ export function createNeon() {
       const sung = cur ? line.words.filter((x) => shownAt(x, line, mode) <= pos).length / line.words.length : 0;
       // the glow on the wall grows as more of the line lights up
       const wall = ctx.createRadialGradient(w / 2, midY, 0, w / 2, midY, Math.max(w, h) * 0.6);
-      wall.addColorStop(0, rgba(theme.star, (0.06 + 0.08 * sung) * quiet));
+      wall.addColorStop(0, rgba(theme.star, (0.06 + 0.08 * sung) * quiet * ((frame.glow ?? 0.25) * 2)));
       wall.addColorStop(1, rgba(theme.star, 0));
       ctx.fillStyle = wall;
       ctx.fillRect(0, 0, w, h);

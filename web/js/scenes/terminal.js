@@ -55,7 +55,7 @@ export function createTerminal() {
           ctx.font = `500 ${f.font}px ${FAMILY}`;
           const a = (age === 0 ? 1 : 0.62 - age * 0.1) * quiet;
           ctx.shadowColor = rgba(theme.star, 0.7 * a);
-          ctx.shadowBlur = f.font * 0.35;
+          ctx.shadowBlur = f.font * 0.35 * ((frame.glow ?? 0.25) * 2);
           f.rows.forEach((row, r) => {
             const cy = y + (r + 0.5) * rowH;
             if (r === 0) {

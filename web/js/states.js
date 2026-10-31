@@ -111,6 +111,9 @@ export const STATES = {
 export const SCENE_LABELS = {
   notfound: 'Lyrics not found',
   instrumental: 'Instrumental',
+  plain: 'Lyrics found but not timed',
+  'lyrics-service-down': 'Lyrics service unreachable',
+  'lyrics-offline': 'You’re offline · lyrics unavailable',
   searching: 'Searching…',
 };
 

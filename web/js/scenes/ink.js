@@ -38,7 +38,7 @@ export function drawInkLine(ctx, frame, index, f, { y, scale = 1, alpha = 1, ink
         ctx.clip();
         if (glow) {
           ctx.shadowColor = rgba(glow, 0.75 * alpha);
-          ctx.shadowBlur = f.font * 0.3;
+          ctx.shadowBlur = f.font * 0.3 * ((frame.glow ?? 0.25) * 2);
         }
         ctx.fillStyle = rgba(ink, alpha);
         ctx.fillText(word.text, x, cy);

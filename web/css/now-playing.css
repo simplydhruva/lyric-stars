@@ -44,14 +44,17 @@
   background: linear-gradient(135deg, rgb(var(--np-a) / 0.75), rgb(var(--np-b) / 0.55) 55%, rgb(var(--np-c) / 0.7));
   filter: blur(calc(var(--np-size) * 0.16));
   transform: scale(1.12);
-  opacity: 0.8;
+  opacity: calc(0.8 * var(--np-fx, 0));
   transition: opacity 600ms ease;
+  display: none;
 }
+#np.fx .np-glow, #np.fx .np-ring { display: block; }
 .np-ring {
   border-radius: 24%;
   border: 1.5px solid rgb(var(--np-a) / 0.9);
   box-shadow: 0 0 18px rgb(var(--np-a) / 0.45);
   opacity: 0.18;
+  display: none;
 }
 .np-cover {
   border-radius: 22%;

@@ -69,7 +69,7 @@ export function createRibbon() {
           ctx.translate(cx, rowY + wy);
           ctx.rotate(Math.atan(slope) * 0.8);
           ctx.shadowColor = rgba(theme.star, 0.8);
-          ctx.shadowBlur = on ? f.font * 0.35 : 0;
+          ctx.shadowBlur = on ? f.font * 0.35 * ((frame.glow ?? 0.25) * 2) : 0;
           ctx.fillStyle = rgba(on ? lit : mix(theme.label, [0, 0, 0], 0.35), (on ? 1 : 0.55) * quiet);
           ctx.textAlign = 'center';
           ctx.fillText(word.text, 0, 0);

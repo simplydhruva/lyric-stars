@@ -158,12 +158,16 @@ export function createConstellation() {
       const r = font * (0.22 + 0.38 * e) * pop * size;
       const bright = Math.min(1, (0.5 + 0.5 * e) * (again ? REPEAT_BRIGHT : 1)) * alpha;
 
-      const gs = r * (5 + 4 * e) * (again ? 1.3 : 1) * (1 + 0.3 * (frame.beat || 0));
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = clamp(bright * (0.45 + 0.55 * e), 0, 1);
-      ctx.drawImage(glow, s.x - gs / 2, s.y - gs / 2, gs, gs);
-      ctx.globalAlpha = 1;
-      ctx.globalCompositeOperation = 'source-over';
+      // Only the star of the word being sung gets a glow, a small tight one (the Glow setting; 0 turns it off).
+      const glowLevel = frame.glow ?? 0.25;
+      if (glowLevel > 0 && e > 0.98 && !leaving && mode !== 'line') {
+        const gs = r * (2.4 + 3.6 * glowLevel) * (1 + 0.3 * (frame.beat || 0));
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = clamp(bright * Math.min(1, 0.4 + glowLevel), 0, 1);
+        ctx.drawImage(glow, s.x - gs / 2, s.y - gs / 2, gs, gs);
+        ctx.globalAlpha = 1;
+        ctx.globalCompositeOperation = 'source-over';
+      }
 
       ctx.fillStyle = rgba(CORE, bright);
       sparklePath(ctx, s.x, s.y, r * 1.6);
@@ -232,13 +236,7 @@ export function createConstellation() {
         g.lineTo(stars[to].x, stars[to].y);
         g.stroke();
       }
-      const gs = font * 2.6;
       for (const st of stars) {
-        g.globalCompositeOperation = 'lighter';
-        g.globalAlpha = 0.5;
-        g.drawImage(glow, st.x - gs / 2, st.y - gs / 2, gs, gs);
-        g.globalCompositeOperation = 'source-over';
-        g.globalAlpha = 1;
         g.fillStyle = rgba(theme.core, 0.7);
         sparklePath(g, st.x, st.y, font * 0.4);
         g.fill();

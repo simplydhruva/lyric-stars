@@ -32,7 +32,7 @@ export class Renderer {
     this.background = new Background();
     this.nebula = new NebulaGlow();
     this.beat = null; // () => 0..1, the beat pulse (audio-beat.js), or null
-    this.opts = { reduceMotion: false, backgroundStars: true, transparent: false, palette: null };
+    this.opts = { reduceMotion: false, backgroundEffects: 0, glow: 25, transparent: false, palette: null };
     this.lastDrawAt = 0;
     this.timeline = null;
     this.seed = '';
@@ -104,8 +104,10 @@ export class Renderer {
   draw(pos, { mode = 'word', playing = true, quiet = false, now = performance.now(), scene = this.sceneId, displayMode = 'window' } = {}) {
     const resized = this._resize();
     const { w, h, dpr } = this.size;
-    const { reduceMotion, backgroundStars, transparent } = this.opts;
-    const sky = backgroundStars && !transparent;
+    const { reduceMotion, transparent } = this.opts;
+    // Background effects (0..100): nebula, drifting dust, twinklers and shooting stars. 0 leaves plain black.
+    const fx = Math.max(0, Math.min(1, (this.opts.backgroundEffects ?? 0) / 100));
+    const sky = fx > 0 && !transparent;
     this.sceneId = SCENE_IDS.includes(scene) ? scene : SCENE_IDS[0];
     const flashOn = flashing(now, this.flashState?.at);
     const frameKey = `${flashOn ? 'f' + Math.round(now) : ''}|${Math.round(pos)}|${mode}|${quiet}|${this.sceneId}|${displayMode}|${w}x${h}@${dpr}`;
@@ -125,16 +127,17 @@ export class Renderer {
     }
     // Paper is a cream sheet: the sky effects would only be wasted work behind it.
     const skyFx = sky && this.sceneId !== 'paper';
+    const calm = !transparent && this.sceneId !== 'paper'; // where the beat bloom may show
     // The beat pulse: only while it is on and something is playing. Lyrics never move with it, only the glow does.
-    const beat = this.beat && this.opts.beatPulse && !reduceMotion && playing && skyFx ? this.beat(now) : 0;
-    if (skyFx && this.opts.nebula !== false && w && h) {
+    const beat = this.beat && this.opts.beatPulse && !reduceMotion && playing && calm ? this.beat(now) : 0;
+    if (skyFx && w && h) {
       this.nebula.prepare(this.theme, now);
-      this.nebula.draw(ctx, w, h, now, reduceMotion);
+      this.nebula.draw(ctx, w, h, now, reduceMotion, fx);
     }
     if (beat > 0.01 && w && h) drawBloom(ctx, w, h, this.theme.star, beat);
     if (sky && w && h) {
       this.background.prepare(w, h, dpr, this.theme, now);
-      this.background.draw(ctx, w, h, now, reduceMotion);
+      this.background.draw(ctx, w, h, now, reduceMotion, fx);
     }
     const lines = this.timeline;
     if (!lines || !lines.length || !w || !h) return true;
@@ -169,8 +172,9 @@ export class Renderer {
     f.songMap = this.opts.songMap !== false;
     f.emotion = this.opts.emotion !== false;
     f.beat = beat;
+    f.glow = Math.max(0, Math.min(1, (this.opts.glow ?? 25) / 100));
     // Shooting stars cross the sky between lines, behind the lyrics. Never with reduce motion.
-    if (skyFx && !reduceMotion && index >= 0 && this.opts.shootingStars !== false) {
+    if (skyFx && !reduceMotion && index >= 0 && fx >= 0.5) {
       drawShootingStars(ctx, streaksAt(lines, index, pos, w, h), this.theme, quiet);
     }
     this._scene(this.sceneId).draw(f);

@@ -98,7 +98,7 @@ export class FakeSpotify {
         name: it.name,
         duration_ms: it.duration_ms,
         artists: [{ name: it.artist }],
-        album: { name: it.album, images: [] },
+        album: { name: it.album, images: it.images || [] },
       },
     };
   }
@@ -123,7 +123,10 @@ export class FakeSpotify {
     if (u.host === 'lrclib.net') {
       const name = u.searchParams.get('track_name') || u.searchParams.get('q') || '';
       const song = this.songs.find((s) => s.type === 'track' && name.includes(s.name));
-      if (u.pathname.endsWith('/search')) return { status: 200, body: [] };
+      if (song?.service === 'error') return { status: 502, body: 'error code: 502' };
+      if (u.pathname.endsWith('/search') && !song?.instrumental && !song?.plain) return { status: 200, body: [] };
+      if (song?.instrumental) return { status: 200, body: { id: 2, trackName: song.name, artistName: song.artist, albumName: song.album, duration: song.duration_ms / 1000, instrumental: true, plainLyrics: '', syncedLyrics: null } };
+      if (song?.plain) return { status: 200, body: { id: 3, trackName: song.name, artistName: song.artist, albumName: song.album, duration: song.duration_ms / 1000, instrumental: false, plainLyrics: song.plain, syncedLyrics: null } };
       if (!song || !song.lyrics) return { status: 404, body: { message: 'not found' } };
       return {
         status: 200,

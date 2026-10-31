@@ -52,7 +52,8 @@ export class NebulaGlow {
     ctx.drawImage(sprites[i], x - big / 2, y - big / 2, big, big);
   }
 
-  draw(ctx, w, h, now, still) {
+  // strength 0..1 scales how visible the clouds are (the Background effects setting).
+  draw(ctx, w, h, now, still, strength = 1) {
     if (!this.sprites) return;
     const bw = Math.max(1, Math.round(w / 4));
     const bh = Math.max(1, Math.round(h / 4));
@@ -79,7 +80,7 @@ export class NebulaGlow {
     }
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 1;
+    ctx.globalAlpha = strength;
     ctx.drawImage(this.buf, 0, 0, w, h);
     ctx.restore();
   }

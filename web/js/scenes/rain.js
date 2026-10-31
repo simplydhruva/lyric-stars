@@ -67,7 +67,7 @@ export function createRain() {
         }
         const glow = p >= 1 && !reduceMotion ? clamp(1 - since / 900, 0, 1) : p >= 1 ? 0 : 0;
         ctx.shadowColor = rgba(theme.star, 0.9 * alpha);
-        ctx.shadowBlur = f.font * 0.7 * glow;
+        ctx.shadowBlur = f.font * 0.7 * glow * ((frame.glow ?? 0.25) * 2);
         ctx.fillStyle = rgba(mix(theme.label, lit, p >= 1 ? 0.7 + 0.3 * glow : p * 0.5), alpha);
         ctx.fillText(word.text, x, y);
       }
