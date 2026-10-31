@@ -47,7 +47,7 @@ async function nowPlaying() {
 
     console.log('Now-playing scene and player bar');
     await step('scene shows the song and "Lyrics not found"', async () => {
-      await waitFor('the scene', () => js(`!document.getElementById('np').hidden && document.querySelector('.np-label').textContent === 'Lyrics not found'`));
+      await waitFor('the scene', () => js(`!document.getElementById('np').hidden && document.querySelector('.np-label').textContent === 'Lyrics not found'`), 20000); // a cold CI runner can be slow
       assertEq(await text('.np-title'), SONG.title);
       assertEq(await text('.np-artist'), SONG.artist);
       assertEq(await text('.np-album'), SONG.album);
