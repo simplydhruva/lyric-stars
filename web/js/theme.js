@@ -5,6 +5,8 @@ export const THEMES = {
   gold: { name: 'Gold', base: [244, 199, 107] },
   ice: { name: 'Ice', base: [138, 206, 255] },
   rose: { name: 'Rose', base: [255, 150, 178] },
+  // A pack can also set the nebula and dust colors (accents); without them the background uses the base color.
+  sunset: { name: 'Sunset', base: [255, 146, 82], accents: [[255, 146, 82], [238, 92, 140], [150, 100, 215]] },
 };
 
 // Installed on every Windows PC, so friends see the same thing without downloads.
@@ -111,7 +113,8 @@ export function extractPalette(data, count = 3) {
 export function resolveTheme({ theme = 'gold', customColor, albumColors }, palette) {
   if (albumColors && palette?.length) return makeTheme(palette[0], palette);
   if (theme === 'custom') return makeTheme(hexToRgb(customColor) || THEMES.gold.base);
-  return makeTheme((THEMES[theme] || THEMES.gold).base);
+  const pack = THEMES[theme] || THEMES.gold;
+  return makeTheme(pack.base, pack.accents);
 }
 
 export function fontCss(key) {

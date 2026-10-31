@@ -19,6 +19,7 @@
     "dist": "electron-builder --win nsis",
     "mock": "node --experimental-websocket tools/mock.mjs",
     "timing": "node --experimental-websocket tools/timing-check.mjs",
+    "themes": "node --experimental-websocket tools/themes.mjs",
     "shots": "node --experimental-websocket tools/shots.mjs shots",
     "soak": "node --experimental-websocket tools/soak.mjs",
     "check:electron": "node --experimental-websocket tools/electron-check.mjs"

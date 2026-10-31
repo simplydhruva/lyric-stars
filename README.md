@@ -108,7 +108,7 @@ Diagnostics (`D`) shows which source and player are in use.
   is held, since there is no audio), and lines that repeat in the song (the chorus) are drawn bigger. Your pick is remembered separately for window,
   fullscreen and overlay; the overlay starts on Karaoke. Settings has a "Random scene each song" option; with it on, `V`
   changes only the current song. Scenes are pure functions of the playback position, so seek and pause never leave stale animation.
-- **Settings (`S`):** lyric source, word/line mode, theme (Gold, Ice, Rose or a custom color), album colors,
+- **Settings (`S`):** lyric source, word/line mode, theme (Gold, Ice, Rose, Sunset or a custom color), album colors,
   font (system fonts only), background stars, reduce motion, corner title/art, global offset, lyric cache, disconnect.
 - **Album colors** (off by default): two or three colors are read from the 64 px cover; grey or
   black-and-white covers fall back to the chosen theme. Colors are lifted so they always glow on black.
@@ -150,6 +150,7 @@ web/js/scenes/            index.js (registry, frame object), constellation.js, k
                           chorus.js (finds repeated lines: the constellation brings their stars back bigger, kinetic makes them bigger)
 tools/visual.mjs          pixel check: renders fixed frames to PNGs (--out) or compares against them (--compare)
 tools/lib/headless.mjs    shared headless-browser helpers for the browser checks below
+tools/themes.mjs           screenshots every theme (and album colors, from a fake cover) in every scene; checks each one tints the lyrics
 tools/lib/fake-spotify.mjs  scripted fake Spotify and lyrics service (songs, no-lyrics song, ad, podcast; pause, seek, skip)
 tools/mock.mjs            runs the whole app against the fake Spotify in every scene (npm run mock)
 tools/timing-check.mjs    every word visible on its exact start time in every scene (npm run timing)

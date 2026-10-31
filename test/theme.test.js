@@ -98,3 +98,10 @@ test('frame stats report rate, cost and late frames', () => {
   assert.ok(sum.meanMs > 1 && sum.meanMs < 2);
   assert.equal(new FrameStats().summary(0).fps, 0);
 });
+
+test('sunset pack brings its own background colors; the plain packs use one', () => {
+  const sunset = resolveTheme({ theme: 'sunset' });
+  assert.equal(sunset.accents.length, 3);
+  assert.deepEqual(sunset.star, makeTheme(THEMES.sunset.base).star);
+  assert.equal(resolveTheme({ theme: 'ice' }).accents.length, 1);
+});
