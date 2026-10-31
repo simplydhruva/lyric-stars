@@ -39,7 +39,8 @@ npm run helper   # rebuild native/bin/lyricstars-media.exe (desktop and dist do 
 
 - The same page, served by the same local server on 127.0.0.1:5173, inside Electron. The page gets no Node access, only a
   small `window.lyricStars` bridge. Navigation is locked to that origin; only Spotify, the Spotify developer site and GitHub open in the browser.
-- **Styles:** window, fullscreen (`F`) and overlay (`O`): always on top, see-through, with opacity, background dim and
+- **Mini widget (`N`, the Mini button, or the tray):** a small always-on-top corner window with the cover and one line of lyrics (Karaoke). It reuses the overlay's opacity, dim and click-through, and drags from anywhere. `N` again returns to the window.
+- **Styles:** window, fullscreen (`F`), overlay (`O`) and mini (`N`): always on top, see-through, with opacity, background dim and
   click-through. Each style remembers its own size, place and monitor in `%APPDATA%\LyricStars\desktop\desktop.json`.
 - **Shortcuts (any app):** `Ctrl+Alt+L` show or hide, `Ctrl+Alt+K` click-through. Tray: show, styles, click-through,
   start with Windows, open to tray (no window or drawing until shown), update check, quit. Closing the window quits.
@@ -123,6 +124,9 @@ Diagnostics (`D`) shows which source and player are in use.
 - **Emotion words:** English words about fire, night, love, water and sun get a small coloured glow in Constellation, Karaoke, Kinetic, Stack, Neon and Lanterns. Other languages get no glow. Each of these three can be switched off in Settings.
   While paused it repaints at about 20 fps; with reduce motion on (default follows Windows "Animation effects")
   nothing moves and a paused sky does not repaint at all.
+- **Romanized and translated lyrics (Settings → Lyric text):** a small caption under the lyrics shows the current line in Latin letters for Korean, Japanese kana, Russian and Greek (built in, offline, on by default). Kanji and Chinese characters, Hindi, Arabic and Thai are not romanized. An optional translation (off by default) looks each song up once at the free MyMemory service (api.mymemory.translated.net, no key) and keeps it on disk; **this sends the lyric text to that service**, and if it is slow, limited or down the lyrics simply show without it. The caption is a line under the lyrics, not under each word, and is hidden in the mini widget.
+- **Save a picture or clip:** `X` (or the Picture button) saves the sky as a PNG; `R` (Clip) records the next 10 seconds as a WebM video. Only the sky is saved, not the buttons. Nothing leaves your PC.
+- **History (`H`):** the songs you played, newest first, each with a small picture of its constellation and how many times it was played (a song counts after 8 seconds with lyrics). Kept on this PC (up to 80); "Clear history" empties it.
 - **Performance:** Diagnostics (`D`) → Rendering shows paints per second, paint cost and late frames.
 
 ## Layout
@@ -170,6 +174,12 @@ tools/electron-check.mjs  launches the real desktop app in each display style; c
 web/js/background.js      nebula, drifting and twinkling background stars
 web/js/nebula.js          the drifting nebula glow
 web/js/shooting-stars.js  shooting stars in line gaps
+web/js/romanize.js        offline romanization (Hangul, kana, Cyrillic, Greek)
+web/js/translate.js       optional translation through MyMemory, chunked, cached per song
+web/js/caption.js         the romanized / translated line under the lyrics
+web/js/export.js          save a PNG picture or a WebM clip of the sky
+web/js/history.js         songs played with their constellation thumbnails
+web/js/history-panel.js   the history panel
 web/js/scenes/emotion.js  emotion-word list and glow
 web/js/theme.js           themes, fonts, album palette extraction (palette.js loads the image)
 web/js/settings-panel.js  settings panel
