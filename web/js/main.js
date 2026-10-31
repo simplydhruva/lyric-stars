@@ -28,6 +28,7 @@ import { preloadCover } from './covers.js';
 import { findCover } from './cover-search.js';
 import { FrameStats } from './perf.js';
 import { Caption } from './caption.js';
+import { AudioBeat, supported as beatSupported } from './audio-beat.js';
 import { History, songMapThumb, MIN_PLAY_MS } from './history.js';
 import { HistoryPanel } from './history-panel.js';
 import { savePicture, recordClip, canRecord, CLIP_SECONDS } from './export.js';
@@ -62,6 +63,29 @@ export const app = {
 watchErrors();
 const renderer = new Renderer($('sky'));
 const frameStats = (app.frameStats = new FrameStats());
+// ---- beat pulse (desktop app only) ---------------------------------------
+
+const beat = new AudioBeat();
+globalThis.lyricStarsBeat = beat; // for tools/beat-check.mjs
+renderer.setBeat(() => beat.pulse());
+async function syncBeat(fromClick) {
+  const want = Boolean(desktop && beatSupported() && settings.get('beatPulse'));
+  if (!want) return beat.stop();
+  if (beat.state === 'listening' || beat.state === 'starting') return;
+  if (!(await beat.start())) {
+    if (fromClick) {
+      settings.set('beatPulse', false);
+      toast('Could not listen to the PC audio, so the beat pulse is off');
+      settingsPanel.render();
+    } else {
+      // Started at launch without a click: try again on the first click or key.
+      const retry = () => syncBeat(false);
+      addEventListener('pointerdown', retry, { once: true });
+      addEventListener('keydown', retry, { once: true });
+    }
+  }
+}
+
 const spike = new SpikePanel($('spike'), app);
 const history = new History({ get: cache.getValue, put: cache.putValue });
 const historyPanel = new HistoryPanel($('history'), { history });
@@ -118,6 +142,7 @@ const settingsPanel = new SettingsPanel($('settings'), {
   canDisconnect: () => accountShown(),
   disconnect,
   desktop: desktop && (() => ({ info: app.desktop, bridge: desktop })),
+  beatStatus: () => (settings.get('beatPulse') ? (beat.state === 'listening' ? (beat.bpm ? `Beat found: about ${Math.round(beat.bpm)} BPM. ` : beat.silent ? 'Listening, but nothing is playing. ' : 'Listening for a steady beat. ') : beat.state === 'failed' ? 'Could not listen to the audio. ' : '') : ''),
 });
 
 // ---- player: the no-lyrics scene and the control bar ---------------------------
@@ -204,6 +229,7 @@ function applyVisuals() {
     nebula: g('nebula'),
     shootingStars: g('shootingStars'),
     emotion: g('emotion'),
+    beatPulse: g('beatPulse'),
     transparent: app.desktop?.style === 'overlay' || app.desktop?.style === 'mini',
     palette: app.palette,
     art: app.track?.artLarge || app.track?.art || null,
@@ -327,7 +353,10 @@ function onSettingChange(key) {
     loadPalette(app.track);
     applyVisuals();
   } else if (key === 'fullFrameRate') fullFrameRate = settings.get('fullFrameRate');
-  else if (key === 'translate' || key === 'translateTo') {
+  else if (key === 'beatPulse') {
+    applyVisuals();
+    syncBeat(true);
+  } else if (key === 'translate' || key === 'translateTo') {
     applyVisuals();
     loadTranslation();
   } else applyVisuals();
@@ -913,6 +942,7 @@ async function boot() {
     desktop.onState(applyDesktop);
     // The browser tab Spotify returned to handed the login back to us.
     desktop.onLogin((params) => finishLogin(auth.completeLogin(params)));
+    syncBeat(false);
   }
   const result = await finishLogin(auth.handleRedirect(), { start: false });
   if (result === 'handed-off') {

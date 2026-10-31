@@ -158,7 +158,7 @@ export function createConstellation() {
       const r = font * (0.22 + 0.38 * e) * pop * size;
       const bright = Math.min(1, (0.5 + 0.5 * e) * (again ? REPEAT_BRIGHT : 1)) * alpha;
 
-      const gs = r * (5 + 4 * e) * (again ? 1.3 : 1);
+      const gs = r * (5 + 4 * e) * (again ? 1.3 : 1) * (1 + 0.3 * (frame.beat || 0));
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = clamp(bright * (0.45 + 0.55 * e), 0, 1);
       ctx.drawImage(glow, s.x - gs / 2, s.y - gs / 2, gs, gs);

@@ -125,6 +125,7 @@ Diagnostics (`D`) shows which source and player are in use.
   While paused it repaints at about 20 fps; with reduce motion on (default follows Windows "Animation effects")
   nothing moves and a paused sky does not repaint at all.
 - **Romanized and translated lyrics (Settings → Lyric text):** a small caption under the lyrics shows the current line in Latin letters for Korean, Japanese kana, Russian and Greek (built in, offline, on by default). Kanji and Chinese characters, Hindi, Arabic and Thai are not romanized. An optional translation (off by default) looks each song up once at the free MyMemory service (api.mymemory.translated.net, no key) and keeps it on disk; **this sends the lyric text to that service**, and if it is slow, limited or down the lyrics simply show without it. The caption is a line under the lyrics, not under each word, and is hidden in the mini widget.
+- **Beat pulse (desktop app, Settings, off by default):** the glow swells from the middle of the sky on each beat and the Constellation stars swell with it. Lyrics never move with it, so word timing is untouched. It listens to the sound your PC is playing (Windows system audio output, through Electron; no extra program or key), keeps only a loudness-change number every 10 ms, and records and sends nothing. Windows may show a screen-capture indicator while it is on, because that is how Windows shares its audio. It finds a steady tempo of 60 to 180 BPM from the last 8 seconds, so it needs a few seconds after a song starts, may read a fast song at half speed (every second beat), and shows nothing when the music has no steady beat (ambient, free tempo) or when nothing is playing. Settings shows "Beat found: about N BPM". Off with reduce motion, in Paper, and in the overlay's transparent sky. `npm run check:beat` plays a drum loop through your speakers for about 20 seconds and checks the app finds its tempo.
 - **Save a picture or clip:** `X` (or the Picture button) saves the sky as a PNG; `R` (Clip) records the next 10 seconds as a WebM video. Only the sky is saved, not the buttons. Nothing leaves your PC.
 - **History (`H`):** the songs you played, newest first, each with a small picture of its constellation and how many times it was played (a song counts after 8 seconds with lyrics). Kept on this PC (up to 80); "Clear history" empties it.
 - **Performance:** Diagnostics (`D`) → Rendering shows paints per second, paint cost and late frames.
@@ -170,10 +171,13 @@ tools/mock.mjs            runs the whole app against the fake Spotify in every s
 tools/timing-check.mjs    every word visible on its exact start time in every scene (npm run timing)
 tools/shots.mjs           screenshots of every scene at 1080p, 1440p, 150% and 200% scaling and a small window (npm run shots)
 tools/soak.mjs            key, resize and reduce-motion abuse, then a looping soak reporting heap, CPU and fps (npm run soak -- --minutes 10)
+tools/beat-check.mjs      plays a drum loop and checks the desktop app finds its tempo (npm run check:beat; needs speakers)
 tools/electron-check.mjs  launches the real desktop app in each display style; checks always-on-top and click-through (npm run check:electron)
 web/js/background.js      nebula, drifting and twinkling background stars
 web/js/nebula.js          the drifting nebula glow
 web/js/shooting-stars.js  shooting stars in line gaps
+web/js/beat.js             finds the tempo and beat from onset strengths (pure)
+web/js/audio-beat.js       listens to the system audio in the desktop app and feeds beat.js
 web/js/romanize.js        offline romanization (Hangul, kana, Cyrillic, Greek)
 web/js/translate.js       optional translation through MyMemory, chunked, cached per song
 web/js/caption.js         the romanized / translated line under the lyrics

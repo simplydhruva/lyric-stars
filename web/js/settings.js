@@ -53,6 +53,7 @@ const DEFAULTS = {
   romanize: true, // Korean, Japanese kana, Russian and Greek lyrics also shown in Latin letters (offline)
   translate: false, // translated line from a free web service; off because it sends the lyric text there
   translateTo: 'en',
+  beatPulse: false, // desktop app: stars and glow pulse to the beat of what the PC is playing (listens to system audio)
   nebula: true, // slow drifting colour clouds behind the stars
   shootingStars: true, // a streak across the sky in the gaps between lines
   emotion: true, // love, fire, night, rain and sun words get a small coloured glow (six scenes)

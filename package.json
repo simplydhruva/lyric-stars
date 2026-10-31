@@ -23,6 +23,7 @@
     "flash": "node --experimental-websocket tools/flash-check.mjs",
     "shots": "node --experimental-websocket tools/shots.mjs shots",
     "soak": "node --experimental-websocket tools/soak.mjs",
+    "check:beat": "node --experimental-websocket tools/beat-check.mjs",
     "check:electron": "node --experimental-websocket tools/electron-check.mjs"
   },
   "engines": {

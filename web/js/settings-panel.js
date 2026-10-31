@@ -79,7 +79,9 @@ export class SettingsPanel {
       <label class="check"><input type="checkbox" name="nebula"${g('nebula') ? ' checked' : ''}> Drifting nebula glow</label>
       <label class="check"><input type="checkbox" name="shootingStars"${g('shootingStars') ? ' checked' : ''}> Shooting stars between lines</label>
       <label class="check"><input type="checkbox" name="emotion"${g('emotion') ? ' checked' : ''}> Glow on words like love, fire and night (some scenes)</label>
-      <label class="check"><input type="checkbox" name="backgroundStars"${g('backgroundStars') ? ' checked' : ''}> Background stars</label>
+${this.host.desktop ? `      <label class="check"><input type="checkbox" name="beatPulse"${g('beatPulse') ? ' checked' : ''}> Pulse to the beat (listens to the sound your PC is playing)</label>
+      <p>${esc(this.host.beatStatus?.() || '')}Windows only. Lyric Stars measures the loudness of your PC's audio output to find the beat; it records nothing and sends nothing. Windows may show a screen-capture indicator while this is on.</p>
+` : ''}      <label class="check"><input type="checkbox" name="backgroundStars"${g('backgroundStars') ? ' checked' : ''}> Background stars</label>
       <label class="check"><input type="checkbox" name="reduceMotion"${g('reduceMotion') ? ' checked' : ''}> Reduce motion (no drift, twinkle or pop)</label>
       <label class="check"><input type="checkbox" name="fullFrameRate"${g('fullFrameRate') ? ' checked' : ''}> Match a fast screen's refresh rate (smoother on 120 Hz+, uses more power)</label>
       <h3>Lyric text</h3>

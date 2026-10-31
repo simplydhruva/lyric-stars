@@ -1,7 +1,7 @@
 // Lyric Stars desktop shell. Runs the same local server and page as the browser
 // version and adds the three display styles, tray, global shortcuts, secure token
 // storage, login through the system browser and an update check.
-import { app, BrowserWindow, Tray, Menu, ipcMain, globalShortcut, screen, shell, dialog, session, nativeImage } from 'electron';
+import { app, desktopCapturer, BrowserWindow, Tray, Menu, ipcMain, globalShortcut, screen, shell, dialog, session, nativeImage } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -115,7 +115,22 @@ async function boot() {
   }
 
   // The page needs no device permissions; allow only copying diagnostics text.
-  session.defaultSession.setPermissionRequestHandler((_wc, permission, cb) => cb(permission === 'clipboard-sanitized-write'));
+  // Screen capture is allowed only for our own page, for the optional beat pulse below.
+  session.defaultSession.setPermissionRequestHandler((wc, permission, cb, details) =>
+    cb(permission === 'clipboard-sanitized-write' || (permission === 'display-capture' && String(details?.requestingUrl || wc.getURL()).startsWith(ORIGIN)))
+  );
+
+  // The beat pulse (Settings, off by default) asks for the PC's audio output. Hand it the system audio and a screen
+  // (the page drops the picture at once); only our own page, only on our origin.
+  session.defaultSession.setDisplayMediaRequestHandler(async (request, cb) => {
+    try {
+      if (!request.securityOrigin?.startsWith(ORIGIN)) return cb({});
+      const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: { width: 0, height: 0 } });
+      cb(sources[0] ? { video: sources[0], audio: 'loopback' } : {});
+    } catch {
+      cb({});
+    }
+  });
 
   await secrets.load();
   registerIpc();

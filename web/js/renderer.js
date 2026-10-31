@@ -11,6 +11,16 @@ import { setArtListener } from './scenes/art.js';
 import { NebulaGlow } from './nebula.js';
 import { drawShootingStars, streaksAt } from './shooting-stars.js';
 
+// A soft glow that swells from the middle of the sky on each beat. Cheap: one gradient.
+function drawBloom(ctx, w, h, color, beat) {
+  const r = Math.max(w, h) * 0.55;
+  const g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, r);
+  g.addColorStop(0, `rgba(${color[0]},${color[1]},${color[2]},${0.13 * beat})`);
+  g.addColorStop(1, `rgba(${color[0]},${color[1]},${color[2]},0)`);
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+}
+
 const IDLE_FRAME_MS = 50; // when only the background moves, 20 frames a second is plenty
 
 export class Renderer {
@@ -21,6 +31,7 @@ export class Renderer {
     this.fontFamily = fontCss('segoe');
     this.background = new Background();
     this.nebula = new NebulaGlow();
+    this.beat = null; // () => 0..1, the beat pulse (audio-beat.js), or null
     this.opts = { reduceMotion: false, backgroundStars: true, transparent: false, palette: null };
     this.lastDrawAt = 0;
     this.timeline = null;
@@ -49,6 +60,10 @@ export class Renderer {
     if (font) this.fontFamily = fontCss(font);
     Object.assign(this.opts, opts);
     this.lastFrameKey = '';
+  }
+
+  setBeat(fn) {
+    this.beat = fn;
   }
 
   // seed: track and play, so each play of a song gets its own sky.
@@ -110,10 +125,13 @@ export class Renderer {
     }
     // Paper is a cream sheet: the sky effects would only be wasted work behind it.
     const skyFx = sky && this.sceneId !== 'paper';
+    // The beat pulse: only while it is on and something is playing. Lyrics never move with it, only the glow does.
+    const beat = this.beat && this.opts.beatPulse && !reduceMotion && playing && skyFx ? this.beat(now) : 0;
     if (skyFx && this.opts.nebula !== false && w && h) {
       this.nebula.prepare(this.theme, now);
       this.nebula.draw(ctx, w, h, now, reduceMotion);
     }
+    if (beat > 0.01 && w && h) drawBloom(ctx, w, h, this.theme.star, beat);
     if (sky && w && h) {
       this.background.prepare(w, h, dpr, this.theme, now);
       this.background.draw(ctx, w, h, now, reduceMotion);
@@ -150,6 +168,7 @@ export class Renderer {
     f.previewNext = this.opts.previewNext !== false;
     f.songMap = this.opts.songMap !== false;
     f.emotion = this.opts.emotion !== false;
+    f.beat = beat;
     // Shooting stars cross the sky between lines, behind the lyrics. Never with reduce motion.
     if (skyFx && !reduceMotion && index >= 0 && this.opts.shootingStars !== false) {
       drawShootingStars(ctx, streaksAt(lines, index, pos, w, h), this.theme, quiet);
