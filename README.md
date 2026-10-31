@@ -73,8 +73,9 @@ Diagnostics (`D`) shows which source and player are in use.
   the album cover (largest size Spotify offers) floats and breathes in a glow, a ring pulses with the song position, and
   a few stars drift around it. The glow and stars take two or three colors from the cover (gold if there is no cover or
   it fails to load). Pausing freezes the drift and dims the glow; with reduce motion on the scene stands still.
-  **Retry** searches again. Following only this PC (no login) the Windows app reports no cover, so the scene borrows the
-  account's cover when you're logged in and it is the same song.
+  **Retry** searches again. The cover is the 640 px image from `album.images` (64 px for thumbnails), preloaded when the
+  song starts and kept per track. The Windows app reports no cover, so when you're logged in the song is looked up on
+  Spotify by title and artist (or the account's own report of it is used); with no match, or no login, a gold star stands in.
 - **Player bar** (bottom centre, fades after 3 s without mouse movement): previous, play/pause, next, and a progress bar you
   can click to seek. Shortcuts: `Space` play/pause, `←` previous, `→` next (`Space` still taps in the sync editor and
   the diagnostics tap test while those are open). It needs the Spotify account, not the PC-only source, and in the
