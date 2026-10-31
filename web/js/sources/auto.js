@@ -45,6 +45,12 @@ export function sameSong(a, b) {
   return titles && artistsMatch(a.artists?.length ? a.artists : [a.artist], b.artists?.[0] || b.artist);
 }
 
+// The Spotify app on this PC reports no cover, but the account's report of the same song has one.
+export function borrowArt(track, other) {
+  if (!track || track.artLarge || !other?.artLarge || !sameSong(track, other)) return track;
+  return { ...track, art: track.art || other.art, artLarge: other.artLarge };
+}
+
 export class AutoSource {
   // useAccount: logged in to Spotify, so the account can be followed too.
   constructor({ onSample, onProblem }, { useAccount }) {
@@ -136,6 +142,7 @@ export class AutoSource {
       this.alias = { key: track.key, track: this.track };
       track = this.track;
     } else if (track.key !== this.track?.key) this.alias = null;
+    track = borrowArt(track, this.entries.account?.sample?.track);
     this.track = track;
     this.onSample(track === sample.track ? sample : { ...sample, track });
   }

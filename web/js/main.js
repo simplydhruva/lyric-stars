@@ -10,7 +10,11 @@ import { fetchLyrics, LyricsError } from './lyrics/lrclib.js';
 import * as cache from './cache.js';
 import { buildTimeline, timelineKind } from './timing.js';
 import { Renderer } from './renderer.js';
-import { STATES, fill } from './states.js';
+import { STATES, SCENE_LABELS, fill } from './states.js';
+import { NowPlaying } from './now-playing.js';
+import { PlayerBar } from './player-bar.js';
+import { PlayerControl } from './player-control.js';
+import { commands as spotifyCommands } from './spotify-control.js';
 import { SpikePanel, sourceLabel } from './spike.js';
 import { buildReport, formatReport, watchErrors, recordError } from './report.js';
 import { SyncEditor } from './editor.js';
@@ -102,6 +106,66 @@ const settingsPanel = new SettingsPanel($('settings'), {
   desktop: desktop && (() => ({ info: app.desktop, bridge: desktop })),
 });
 
+// ---- player: the no-lyrics scene and the control bar ---------------------------
+
+const nowPlaying = new NowPlaying($('np'), { onRetry: retryLyrics });
+const bar = new PlayerBar($('player'), {
+  previous: () => control.previous(),
+  playPause: () => control.playPause(),
+  next: () => control.next(),
+  seek: (ms) => control.seek(ms),
+});
+const COMMANDS = ['play', 'pause', 'next', 'previous', 'seek'];
+const control = new PlayerControl({
+  // The demo has its own pretend player; everything else goes to the Spotify account.
+  sender: Object.fromEntries(
+    COMMANDS.map((name) => [name, (...args) => (app.source?.name === 'demo' ? app.source.commands() : spotifyCommands)[name](...args)])
+  ),
+  state: () => {
+    const track = app.playback?.kind === 'track' ? app.playback.track : null;
+    return {
+      available: controlsAvailable(),
+      trackKey: track?.key,
+      durationMs: track?.durationMs || 0,
+      isPlaying: app.clock.playing,
+      positionMs: app.clock.position(),
+    };
+  },
+  apply: applyPlayback,
+  refresh: () => app.source?.pollNow?.(),
+  onError: onControlError,
+});
+
+function controlsAvailable() {
+  if (app.authState || app.playback?.kind !== 'track') return false;
+  return app.source?.name === 'demo' || accountShown();
+}
+
+// Show a press at once; the next poll from the source confirms it.
+function applyPlayback({ isPlaying, positionMs }) {
+  const pb = app.playback;
+  if (pb?.kind !== 'track') return;
+  const at = performance.now();
+  app.playback = { ...pb, isPlaying, positionMs, at };
+  app.clock.update({ positionMs, at, isPlaying, trackKey: pb.track.key });
+  updateView();
+}
+
+function onControlError(e) {
+  recordError(`control: ${e.code || 'error'}`);
+  showControls();
+  if (e.code === 'scope') {
+    // Logins from before the player bar can't control playback; ask Spotify again.
+    bar.say('Lyric Stars needs your permission to control Spotify. Opening the Spotify login…');
+    setTimeout(() => actions.login(), 1500);
+  } else bar.say(e.message || 'Spotify could not do that.');
+}
+
+function retryLyrics() {
+  nowPlaying.busy = true;
+  actions['retry-lyrics']();
+}
+
 function nudgeGlobal(ms) {
   const v = sync.setGlobalOffset(sync.globalOffset() + ms);
   toast(`Global offset ${sync.formatOffset(v)}`);
@@ -122,6 +186,7 @@ function applyVisuals() {
     chaos: g('chaos'),
     transparent: app.desktop?.style === 'overlay',
   });
+  nowPlaying.setStill(Boolean(g('reduceMotion')));
   updateCorner();
 }
 
@@ -237,9 +302,16 @@ function onProblem(problem) {
 }
 
 function onSample(sample) {
+  if (control.holding(sample)) return; // older than the button just pressed
   app.playback = sample;
   if (sample.kind === 'track') {
     if (sample.track.key !== app.track?.key) onTrackChange(sample.track);
+    else if (sample.track.art !== app.track.art || sample.track.artLarge !== app.track.artLarge) {
+      // The cover showed up after the song did (the PC's Spotify app has none; the account does).
+      app.track = sample.track;
+      loadPalette(sample.track);
+      applyVisuals();
+    }
     app.clock.update({
       positionMs: sample.positionMs,
       at: sample.at,
@@ -257,6 +329,7 @@ function onSample(sample) {
 function onTrackChange(track) {
   app.track = track;
   app.plays++;
+  nowPlaying.busy = false;
   app.lyrics = null;
   app.timeline = null;
   app.baseLines = null;
@@ -403,7 +476,15 @@ function chipKey() {
   return null;
 }
 
-const TIMING_LABELS = { word: 'word-timed', yours: 'your timing', estimated: 'estimated' };
+// The scene's status text when it should be on screen, else null.
+function sceneFor(key) {
+  if (!app.track || app.playback?.kind !== 'track') return null;
+  if (key === 'notfound' || key === 'instrumental') return nowPlaying.busy ? SCENE_LABELS.searching : SCENE_LABELS[key];
+  if (key == null && nowPlaying.busy && app.lyrics?.status === 'loading') return SCENE_LABELS.searching;
+  return null;
+}
+
+const TIMING_LABELS ={ word: 'word-timed', yours: 'your timing', estimated: 'estimated' };
 
 function updateView() {
   const key = currentStateKey();
@@ -420,7 +501,17 @@ function updateView() {
     $('client-id').value ||= auth.getClientId();
   }
 
-  const s = key && key !== 'setup' ? STATES[key] : null;
+  // No lyrics to show: a now-playing scene takes the place of the empty screen.
+  if (app.lyrics?.status !== 'loading') nowPlaying.busy = false;
+  const sceneLabel = sceneFor(key);
+  if (sceneLabel) {
+    nowPlaying.show({ track: app.track, identity: `${app.track.key}|${app.plays}`, label: sceneLabel, busy: nowPlaying.busy });
+    nowPlaying.setPlaying(Boolean(app.playback.isPlaying));
+  } else if (nowPlaying.visible) nowPlaying.hide();
+  document.body.classList.toggle('np-on', Boolean(sceneLabel));
+  bar.setAvailable(control.available);
+
+  const s = key && key !== 'setup' && !sceneLabel ? STATES[key] : null;
   const card = $('card');
   card.hidden = !s;
   if (s) {
@@ -442,7 +533,8 @@ function updateView() {
     }
   }
 
-  const ck = chipKey();
+  let ck = chipKey();
+  if (sceneLabel && (ck === 'loading' || ck === 'paused')) ck = null; // the scene already says so
   $('chip').hidden = !ck;
   if (ck) $('chip').textContent = fill(STATES[ck].chip, vars);
 
@@ -579,17 +671,31 @@ window.addEventListener('keydown', (e) => {
     // Demo only: P pauses, arrows seek 10 s, to exercise re-sync.
     if (k === 'p') app.source.togglePause();
     else app.source.seek(k === 'arrowleft' ? -10_000 : 10_000);
+  } else if (control.available && playerKey(e, k)) {
+    e.preventDefault();
+    if (!e.repeat) {
+      if (e.target.closest?.('#player')) e.target.blur(); // or Space would also press the focused button
+      if (k === ' ') control.playPause();
+      else if (k === 'arrowleft') control.previous();
+      else control.next();
+    }
   } else return;
   showControls();
 });
 
-// Controls hide after a few seconds without mouse movement.
+// Space, Left and Right drive the player, except Space on a button elsewhere, which presses it.
+function playerKey(e, k) {
+  if (k === 'arrowleft' || k === 'arrowright') return true;
+  return k === ' ' && !(e.target.closest?.('button') && !e.target.closest('#player'));
+}
+
+// Controls hide after 3 seconds without mouse movement and return on movement.
 let hideTimer;
 function showControls() {
   document.body.classList.remove('controls-hidden', 'idle-cursor');
   clearTimeout(hideTimer);
   hideTimer = setTimeout(() => {
-    if (document.querySelector('#controls:hover')) return showControls();
+    if (document.querySelector('#controls:hover, #player:hover, #player.has-message')) return showControls();
     document.body.classList.add('controls-hidden', 'idle-cursor');
   }, 3000);
 }
@@ -605,7 +711,10 @@ function frame(now) {
   const stride = fullFrameRate ? 1 : sync.frameStride(latency.refreshMs);
   const t0 = performance.now();
   if (frameCount++ % stride === 0 && renderer.draw(drawPosition(), { mode: app.mode, playing: app.clock.playing, now })) frameStats.add(now, performance.now() - t0);
-  spike.frame(app.clock.position());
+  const position = app.clock.position();
+  nowPlaying.frame(now, position);
+  bar.frame(position, app.track?.durationMs, app.clock.playing);
+  spike.frame(position);
   editor.frame();
   requestAnimationFrame(frame);
 }

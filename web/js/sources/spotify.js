@@ -48,6 +48,8 @@ export function classifyForbidden(message) {
 
 export function trackFromItem(item) {
   const artists = (item.artists || []).map((a) => a.name);
+  const images = item.album?.images || [];
+  const largest = images.reduce((a, b) => ((b.width || 0) > (a?.width || 0) ? b : a), images[0]);
   return {
     key: item.id ? `sp:${item.id}` : `uri:${item.uri}`,
     id: item.id,
@@ -56,7 +58,8 @@ export function trackFromItem(item) {
     artist: artists.join(', '),
     album: item.album?.name || '',
     durationMs: item.duration_ms,
-    art: item.album?.images?.at(-1)?.url,
+    art: images.at(-1)?.url, // smallest: for the corner and the palette
+    artLarge: largest?.url, // largest: for the now-playing cover
   };
 }
 

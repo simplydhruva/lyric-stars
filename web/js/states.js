@@ -106,6 +106,14 @@ export const STATES = {
   'spotify-down': { chip: 'Spotify isn’t responding · retrying' },
 };
 
+// The now-playing scene stands in for the soft cards when there are no lyrics to show.
+// Its small status line, by state; `searching` is a Retry in progress.
+export const SCENE_LABELS = {
+  notfound: 'Lyrics not found',
+  instrumental: 'Instrumental',
+  searching: 'Searching…',
+};
+
 export function fill(template, vars) {
   return String(template || '').replace(/\{(\w+)\}/g, (_, k) => vars[k] ?? '');
 }

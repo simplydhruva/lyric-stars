@@ -2,7 +2,8 @@
 import { BUILT_IN_CLIENT_ID } from '../config.js';
 import { store } from './settings.js';
 
-export const SCOPES = 'user-read-playback-state user-read-currently-playing';
+export const MODIFY_SCOPE = 'user-modify-playback-state'; // play, pause, next, previous, seek
+export const SCOPES = `user-read-playback-state user-read-currently-playing ${MODIFY_SCOPE}`;
 const AUTH_URL = 'https://accounts.spotify.com/authorize';
 const TOKEN_URL = 'https://accounts.spotify.com/api/token';
 const TOKENS_KEY = 'ls.tokens';
@@ -136,6 +137,7 @@ function saveTokens(data, previous = {}) {
     refresh: data.refresh_token || previous.refresh,
     expiresAt: Date.now() + (data.expires_in || 3600) * 1000,
     clientId: getClientId(),
+    scope: data.scope || previous.scope, // what Spotify granted; logins from before the player bar lack the modify scope
   };
   tokenStore.set(tokens);
   return tokens;
@@ -196,6 +198,11 @@ export async function completeLogin({ code, state, error } = {}) {
 export function isLoggedIn() {
   const t = tokenStore.get();
   return Boolean(t && t.refresh && t.clientId === getClientId());
+}
+
+// True when the saved login was granted this scope. Older tokens record none.
+export function hasScope(scope) {
+  return Boolean(tokenStore.get()?.scope?.split(' ').includes(scope));
 }
 
 export function logout() {

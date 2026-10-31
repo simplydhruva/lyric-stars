@@ -67,6 +67,22 @@ The media session is read by `native/media-helper.cs`, compiled with the C# comp
 optional: without it the server falls back to `tools/smtc-probe.ps1` (slower to start, same output).
 Diagnostics (`D`) shows which source and player are in use.
 
+## Now playing and player controls
+
+- **No lyrics:** when lyrics aren't found, or the song is instrumental, a now-playing scene replaces the empty screen:
+  the album cover (largest size Spotify offers) floats and breathes in a glow, a ring pulses with the song position, and
+  a few stars drift around it. The glow and stars take two or three colors from the cover (gold if there is no cover or
+  it fails to load). Pausing freezes the drift and dims the glow; with reduce motion on the scene stands still.
+  **Retry** searches again. Following only this PC (no login) the Windows app reports no cover, so the scene borrows the
+  account's cover when you're logged in and it is the same song.
+- **Player bar** (bottom centre, fades after 3 s without mouse movement): previous, play/pause, next, and a progress bar you
+  can click to seek. Shortcuts: `Space` play/pause, `←` previous, `→` next (`Space` still taps in the sync editor and
+  the diagnostics tap test while those are open). It needs the Spotify account, not the PC-only source, and in the
+  transparent overlay it only shows while the mouse is over it.
+- **Permission:** controls use the `user-modify-playback-state` scope. A login saved before this feature lacks it, so the first
+  press sends you through the Spotify login once more. Spotify only allows playback control for Premium accounts and when a
+  device is active; if it refuses, the reason shows above the bar and the press is undone.
+
 ## Timing
 
 - Real word times win: enhanced LRC `<mm:ss.xx>` word tags, or your own taps. Otherwise words are

@@ -1,0 +1,126 @@
+/* The no-lyrics "now playing" scene. Colours arrive as --np-a/b/c (r g b triples)
+   from the album cover; they start as gold. */
+#np {
+  --np-a: 244 199 107;
+  --np-b: 244 199 107;
+  --np-c: 244 199 107;
+  --np-size: clamp(150px, 38vmin, 420px);
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 0 16px 90px; /* leaves room for the player bar */
+  pointer-events: none;
+}
+#np .np-retry { pointer-events: auto; }
+
+#np.np-enter { animation: np-in 500ms ease-out both; }
+@keyframes np-in {
+  from { opacity: 0; transform: translateY(26px); }
+  to { opacity: 1; transform: none; }
+}
+
+.np-stage {
+  position: relative;
+  width: var(--np-size);
+  height: var(--np-size);
+  flex: none;
+}
+.np-stars {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 260%;
+  height: 260%;
+  transform: translate(-50%, -50%);
+}
+.np-float, .np-glow, .np-ring, .np-cover { position: absolute; inset: 0; }
+.np-float { will-change: transform; }
+
+.np-glow {
+  border-radius: 24%;
+  background: linear-gradient(135deg, rgb(var(--np-a) / 0.75), rgb(var(--np-b) / 0.55) 55%, rgb(var(--np-c) / 0.7));
+  filter: blur(calc(var(--np-size) * 0.16));
+  transform: scale(1.12);
+  opacity: 0.8;
+  transition: opacity 600ms ease;
+}
+.np-ring {
+  border-radius: 24%;
+  border: 1.5px solid rgb(var(--np-a) / 0.9);
+  box-shadow: 0 0 18px rgb(var(--np-a) / 0.45);
+  opacity: 0.18;
+}
+.np-cover {
+  border-radius: 22%;
+  overflow: hidden;
+  background: #120e06;
+  border: 1px solid var(--line);
+  box-shadow: 0 0 0 1px rgb(var(--np-a) / 0.18);
+}
+.np-fallback {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-size: calc(var(--np-size) * 0.4);
+  color: #1a1306;
+  background: var(--gold);
+}
+.np-cover img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  opacity: 0;
+  transition: opacity 300ms ease;
+}
+.np-cover img.ready { opacity: 1; }
+.np-cover img:not([src]) { display: none; }
+
+.np-title {
+  margin: calc(var(--np-size) * 0.14) 0 4px;
+  max-width: min(90vw, 620px);
+  font-size: clamp(18px, 2.4vmin + 8px, 28px);
+  font-weight: 600;
+  color: var(--gold);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.np-artist {
+  margin: 0;
+  max-width: min(90vw, 620px);
+  font-size: clamp(14px, 1.6vmin + 6px, 19px);
+  color: var(--muted);
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.np-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+  font-size: 12px;
+  color: var(--muted);
+}
+.np-retry { padding: 3px 12px; font-size: 12px; background: rgba(0, 0, 0, 0.5); }
+.np-retry:disabled { opacity: 0.45; cursor: default; }
+.np-retry:disabled:hover { border-color: var(--line); }
+
+/* Paused: the glow dims; motion stops in the script. */
+#np.paused .np-glow { opacity: 0.22; }
+#np.paused .np-cover img { filter: saturate(0.85); }
+
+/* Reduce motion: the same scene, standing still and with no entrance. */
+#np.still.np-enter { animation: none; }
+#np.still .np-glow { transition: none; }
+
+/* The scene already shows the title, so the corner label would repeat it. */
+body.np-on #corner { display: none; }

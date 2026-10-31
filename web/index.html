@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Lyric Stars</title>
   <link rel="stylesheet" href="styles.css">
+  <link rel="stylesheet" href="css/now-playing.css">
+  <link rel="stylesheet" href="css/player-bar.css">
 </head>
 <body>
   <canvas id="sky" aria-label="Lyrics constellation"></canvas>
@@ -15,6 +17,8 @@
     <span id="chip" class="chip" hidden></span>
     <span id="timing" class="chip subtle" hidden title="How word times were found"></span>
   </div>
+
+  <section id="np" hidden aria-label="Now playing"></section>
 
   <section id="card" class="card" hidden role="status" aria-live="polite">
     <h1 id="card-title"></h1>
@@ -44,6 +48,8 @@
   </section>
 
   <div id="grip" title="Drag to move" hidden></div>
+
+  <div id="player" hidden></div>
 
   <nav id="controls" aria-label="Controls">
     <button id="btn-mode" type="button" title="Word or line mode (M)"></button>

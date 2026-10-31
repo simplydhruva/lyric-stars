@@ -17,6 +17,7 @@ export class DemoSource {
       // Album art for palette testing; only Spotify's image host is allowed by the page's CSP.
       art: /^https:\/\/i\.scdn\.co\//.test(q.get('art') || '') ? q.get('art') : undefined,
     };
+    this.track.artLarge = this.track.art;
     this.startPos = Number(q.get('start') || 0) * 1000;
     this.playing = true;
     this.pos = this.startPos;
@@ -52,6 +53,24 @@ export class DemoSource {
     this.pos = Math.max(0, this._now() + deltaMs);
     this.at = performance.now();
     this._emit();
+  }
+
+  seekTo(ms) {
+    this.pos = Math.max(0, ms);
+    this.at = performance.now();
+    this._emit();
+  }
+
+  // The same commands the Spotify account offers, so the player bar works in the demo.
+  // There is only one song, so next and previous start it again.
+  commands() {
+    return {
+      play: async () => this.playing || this.togglePause(),
+      pause: async () => !this.playing || this.togglePause(),
+      next: async () => this.seekTo(0),
+      previous: async () => this.seekTo(0),
+      seek: async (ms) => this.seekTo(ms),
+    };
   }
 
   _emit() {
