@@ -3,6 +3,7 @@
 // Run with `npm run smoke`. It needs a Chromium browser; set CHROME_PATH to pick one.
 // Without one it skips locally, and fails when CI is set.
 import { startSession, syncedEntry, waitFor, sleep, findBrowser } from './lib/headless.mjs';
+import { SCENES } from '../web/js/scenes/index.js';
 
 const PORT = Number(process.env.SMOKE_PORT) || 5196;
 
@@ -126,8 +127,9 @@ async function scenes() {
       await open();
       assertEq(await scene(), 'karaoke');
     });
-    await step('V goes on through the stack and kinetic scenes, each draws, then wraps to the constellation', async () => {
-      for (const [id, name] of [['stack', 'Scrolling stack'], ['kinetic', 'Kinetic'], ['constellation', 'Constellation']]) {
+    await step('V goes on through every scene, each draws, then wraps to the constellation', async () => {
+      const order = SCENES.map((x) => [x.id, x.name]);
+      for (const [id, name] of [...order.slice(order.findIndex(([i]) => i === 'karaoke') + 1), order[0]]) {
         await key('v', 'KeyV');
         await waitFor(id, async () => (await scene()) === id);
         assertEq(await toastText(), `Scene: ${name}`);
@@ -142,9 +144,11 @@ async function scenes() {
       const before = await js(`document.getElementById('sky').toDataURL()`);
       await key('m', 'KeyM');
       await waitFor('the redraw', async () => (await js(`document.getElementById('sky').toDataURL()`)) !== before);
-      await key('m', 'KeyM'); // back to word by word, and on to the constellation
-      await key('v', 'KeyV');
-      await key('v', 'KeyV');
+      await key('m', 'KeyM'); // back to word by word, and on round to the constellation
+      for (let n = 0; n < SCENES.length; n++) {
+        if ((await scene()) === 'constellation') break;
+        await key('v', 'KeyV');
+      }
       await waitFor('constellation', async () => (await scene()) === 'constellation');
     });
     await step('the settings panel shows and changes the choice', async () => {
@@ -161,7 +165,7 @@ async function scenes() {
     await step('random mode: V changes only this song, not the saved favorite', async () => {
       await key('s', 'KeyS');
       await waitFor('the panel', () => js(`!document.getElementById('settings').hidden`));
-      const c = await js(`(() => { const r = document.querySelector('input[name=sceneRandom]').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
+      const c = await js(`(() => { const el = document.querySelector('input[name=sceneRandom]'); el.scrollIntoView({ block: 'center' }); const r = el.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
       await click(c.x, c.y);
       await waitFor('the setting', async () => (await saved('sceneRandom')) === true);
       await key('s', 'KeyS');

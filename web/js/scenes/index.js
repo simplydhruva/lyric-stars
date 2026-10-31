@@ -13,17 +13,39 @@
 //   mode                    'word' | 'line' (M: word by word or line by line; the stack and kinetic scenes follow it too)
 //   reduceMotion, playing, quiet
 //   seed, spread, chaos     the sky's layout inputs (constellation)
+//   art                     URL of the album cover (orbit, polaroid), or null
+//   emotion                 true: words like love, fire, night, rain and sun get a coloured glow (see emotion.js)
 //   previewNext, songMap    settings for the constellation: faint dots for the next line; the song map at the end
 import { createConstellation } from './constellation.js';
 import { createKaraoke } from './karaoke.js';
 import { createStack } from './stack.js';
 import { createKinetic } from './kinetic.js';
+import { createHandwriting } from './handwriting.js';
+import { createRain } from './rain.js';
+import { createLanterns } from './lanterns.js';
+import { createNeon } from './neon.js';
+import { createTypewriter } from './typewriter.js';
+import { createRibbon } from './ribbon.js';
+import { createOrbit } from './orbit.js';
+import { createPolaroid } from './polaroid.js';
+import { createTerminal } from './terminal.js';
+import { createPaper } from './paper.js';
 
 export const SCENES = [
   { id: 'constellation', name: 'Constellation', create: createConstellation },
   { id: 'karaoke', name: 'Karaoke', create: createKaraoke },
   { id: 'stack', name: 'Scrolling stack', create: createStack },
   { id: 'kinetic', name: 'Kinetic', create: createKinetic },
+  { id: 'handwriting', name: 'Handwriting', create: createHandwriting },
+  { id: 'rain', name: 'Rain', create: createRain },
+  { id: 'lanterns', name: 'Lanterns', create: createLanterns },
+  { id: 'neon', name: 'Neon sign', create: createNeon },
+  { id: 'typewriter', name: 'Typewriter', create: createTypewriter },
+  { id: 'ribbon', name: 'Ribbon', create: createRibbon },
+  { id: 'orbit', name: 'Orbit', create: createOrbit },
+  { id: 'polaroid', name: 'Polaroid', create: createPolaroid },
+  { id: 'terminal', name: 'Terminal', create: createTerminal },
+  { id: 'paper', name: 'Paper', create: createPaper },
 ];
 
 export const SCENE_IDS = SCENES.map((s) => s.id);

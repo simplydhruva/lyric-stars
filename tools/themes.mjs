@@ -5,6 +5,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import zlib from 'node:zlib';
 import { startSession, syncedEntry, waitFor, sleep } from './lib/headless.mjs';
+import { SCENE_IDS } from '../web/js/scenes/index.js';
 
 const out = process.argv[2];
 if (!out) {
@@ -48,7 +49,7 @@ function coverPng() {
   return Buffer.concat([Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]), chunk('IHDR', ihdr), chunk('IDAT', zlib.deflateSync(raw)), chunk('IEND', Buffer.alloc(0))]);
 }
 
-const SCENES = ['constellation', 'karaoke', 'stack', 'kinetic'];
+const SCENES = SCENE_IDS;
 const THEMES = [
   ['gold', { theme: 'gold' }],
   ['ice', { theme: 'ice' }],
@@ -101,6 +102,8 @@ try {
       for (let j = i + 1; j < names.length; j++) {
         const a = seen[scene][names[i]];
         const b = seen[scene][names[j]];
+        // paper is a fixed cream sheet; orbit and polaroid are mostly the cover itself: the theme is not what is bright there
+        if (['paper', 'polaroid', 'orbit'].includes(scene)) continue;
         if (a && b && Math.hypot(a[0] - b[0], a[1] - b[1], a[2] - b[2]) < 8) {
           bad++;
           console.log(`  FAIL ${scene}: ${names[i]} and ${names[j]} look the same (${a} vs ${b})`);

@@ -193,8 +193,12 @@ function applyVisuals() {
     chaos: g('chaos'),
     previewNext: g('previewNext'),
     songMap: g('songMap'),
+    nebula: g('nebula'),
+    shootingStars: g('shootingStars'),
+    emotion: g('emotion'),
     transparent: app.desktop?.style === 'overlay',
     palette: app.palette,
+    art: app.track?.artLarge || app.track?.art || null,
   });
   nowPlaying.setStill(Boolean(g('reduceMotion')));
   updateCorner();

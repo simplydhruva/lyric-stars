@@ -110,11 +110,17 @@ Diagnostics (`D`) shows which source and player are in use.
   is held, since there is no audio), and lines that repeat in the song (the chorus) are drawn bigger. Your pick is remembered separately for window,
   fullscreen and overlay; the overlay starts on Karaoke. Settings has a "Random scene each song" option; with it on, `V`
   changes only the current song. Scenes are pure functions of the playback position, so seek and pause never leave stale animation.
+  Ten more: *Handwriting* (a pen writes each word, a reveal rather than true strokes), *Rain* (words fall and land), *Lanterns* (words rise on glowing paper
+  lanterns), *Neon*, *Typewriter*, *Ribbon* (words ride a wave; its liveliness comes from line pace and chorus, not audio), *Orbit* (words circle the album cover),
+  *Polaroid* (a photo card per line), *Terminal* and *Paper* (a light cream sheet). Orbit and Polaroid use the album cover, with a glowing disc or a
+  palette wash when there is none.
 - **Settings (`S`):** lyric source, word/line mode, theme (Gold, Ice, Rose, Sunset or a custom color), album colors,
   font (system fonts only), background stars, reduce motion, corner title/art, global offset, lyric cache, disconnect.
 - **Album colors** (off by default): two or three colors are read from the 64 px cover; grey or
   black-and-white covers fall back to the chosen theme. Colors are lifted so they always glow on black.
-- **Background:** a faint nebula in the theme colors and two layers of dust stars drifting at different speeds.
+- **Background:** a faint nebula in the theme colors, two layers of dust stars drifting at different speeds, and (Settings, on by default) a slowly drifting nebula glow in the theme or album colors. Off in Paper and the transparent overlay.
+- **Shooting stars:** a dim streak crosses the sky in the gap after a line ends (gaps of 0.4 s or more). Off with reduce motion, in the overlay and in Paper.
+- **Emotion words:** English words about fire, night, love, water and sun get a small coloured glow in Constellation, Karaoke, Kinetic, Stack, Neon and Lanterns. Other languages get no glow. Each of these three can be switched off in Settings.
   While paused it repaints at about 20 fps; with reduce motion on (default follows Windows "Animation effects")
   nothing moves and a paused sky does not repaint at all.
 - **Performance:** Diagnostics (`D`) → Rendering shows paints per second, paint cost and late frames.
@@ -147,7 +153,8 @@ web/js/corrections.js     your timings: merge, import, export (also the referenc
 web/js/editor.js          tap-to-sync editor
 web/js/harness.js         scores the estimator; tools/harness.mjs runs it on test/reference
 web/js/renderer.js        canvas host: sizing, background, idle-frame skipping, hands lyrics to the active scene
-web/js/scenes/            index.js (registry, frame object), constellation.js, karaoke.js, stack.js, kinetic.js,
+web/js/scenes/            index.js (registry, frame object), constellation.js, karaoke.js, stack.js, kinetic.js, the ten newer scenes (handwriting.js ... paper.js),
+                          motion.js (their pure timing maths), art.js (cover loading), ink.js (pen reveal),
                           karaoke-layout.js / stack-layout.js / kinetic-layout.js (pure maths), line-draw.js (shared line drawing),
                           chorus.js (finds repeated lines: the constellation brings their stars back bigger, kinetic makes them bigger)
 tools/visual.mjs          pixel check: renders fixed frames to PNGs (--out) or compares against them (--compare)
@@ -161,6 +168,9 @@ tools/shots.mjs           screenshots of every scene at 1080p, 1440p, 150% and 2
 tools/soak.mjs            key, resize and reduce-motion abuse, then a looping soak reporting heap, CPU and fps (npm run soak -- --minutes 10)
 tools/electron-check.mjs  launches the real desktop app in each display style; checks always-on-top and click-through (npm run check:electron)
 web/js/background.js      nebula, drifting and twinkling background stars
+web/js/nebula.js          the drifting nebula glow
+web/js/shooting-stars.js  shooting stars in line gaps
+web/js/scenes/emotion.js  emotion-word list and glow
 web/js/theme.js           themes, fonts, album palette extraction (palette.js loads the image)
 web/js/settings-panel.js  settings panel
 web/js/perf.js            paint statistics for diagnostics

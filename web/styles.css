@@ -244,6 +244,8 @@ body.controls-hidden #chips .subtle { opacity: 0; pointer-events: none; }
   pointer-events: none;
 }
 #corner[hidden] { display: none; }
+/* The paper scene is cream, so the plain text on it (the pills and buttons have their own dark background) goes dark. */
+html[data-scene="paper"] #corner { color: rgba(40, 34, 52, 0.75); }
 #corner img { width: 40px; height: 40px; border-radius: 4px; opacity: 0.8; flex: none; }
 #corner span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 

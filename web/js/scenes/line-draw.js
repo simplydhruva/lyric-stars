@@ -1,6 +1,7 @@
 // Shared by the scenes that show whole lines of text (karaoke and the scrolling stack):
 // a cache of how each line wraps, and the drawing of one line with its gold fill.
 import { fitLine, LINE_HEIGHT, sweepFraction } from './karaoke-layout.js';
+import { drawEmotion } from './emotion.js';
 
 const rgba = ([r, g, b], a) => `rgba(${r},${g},${b},${a})`;
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -8,7 +9,8 @@ const lift = ([r, g, b], k) => [r + (255 - r) * k, g + (255 - g) * k, b + (255 -
 
 // Wrapping a line means measuring text, which is slow, so it is done once per line and kept until
 // the lines, the size or the font change. getCtx() gives the context to measure with.
-export function createFitCache(getCtx) {
+// opts: { weight, family(frame), maxRows } to wrap in another font (a typewriter face, say).
+export function createFitCache(getCtx, opts = {}) {
   const fits = new Map();
   let key = null;
   return {
@@ -30,10 +32,10 @@ export function createFitCache(getCtx) {
         f = fitLine(
           frame.lines[index].words.map((x) => x.text),
           (text, font) => {
-            ctx.font = `600 ${font}px ${frame.fontFamily}`;
+            ctx.font = `${opts.weight ?? 600} ${font}px ${opts.family ? opts.family(frame) : frame.fontFamily}`;
             return ctx.measureText(text).width;
           },
-          { maxW, baseFont }
+          { maxW, baseFont, maxRows: opts.maxRows }
         );
         fits.set(index, f);
       }
@@ -82,6 +84,11 @@ export function drawFilledLine(ctx, frame, index, f, { y, scale, alpha, near, cu
         ctx.fillStyle = rgba(fillColor, fillAlpha);
         ctx.fillText(word.text, x, cy);
         ctx.restore();
+      }
+      // a coloured glow on emotion words, from the word's own start (the sweep may still be partway across it)
+      if (fraction > 0 && fillAlpha > 0.004) {
+        const since = pos - (frame.mode === 'line' ? line.time : word.start);
+        drawEmotion(ctx, frame, word.text, since, index * 31 + i, f.font, fillAlpha, () => ctx.fillText(word.text, x, cy));
       }
     }
   });

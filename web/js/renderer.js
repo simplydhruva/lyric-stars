@@ -7,6 +7,9 @@ import { Background } from './background.js';
 import { makeTheme, THEMES, fontCss } from './theme.js';
 import { createScene, SCENE_IDS } from './scenes/index.js';
 import { drawFlash, flashing } from './sync-flash.js';
+import { setArtListener } from './scenes/art.js';
+import { NebulaGlow } from './nebula.js';
+import { drawShootingStars, streaksAt } from './shooting-stars.js';
 
 const IDLE_FRAME_MS = 50; // when only the background moves, 20 frames a second is plenty
 
@@ -17,6 +20,7 @@ export class Renderer {
     this.theme = makeTheme(THEMES.gold.base);
     this.fontFamily = fontCss('segoe');
     this.background = new Background();
+    this.nebula = new NebulaGlow();
     this.opts = { reduceMotion: false, backgroundStars: true, transparent: false, palette: null };
     this.lastDrawAt = 0;
     this.timeline = null;
@@ -28,6 +32,10 @@ export class Renderer {
     this.scenes = new Map(); // id -> scene, created the first time it is shown
     this.sceneId = SCENE_IDS[0];
     this.frame = {}; // reused for every paint
+    // a cover that finishes loading while paused must repaint
+    setArtListener(() => {
+      this.lastFrameKey = '';
+    });
   }
 
   // theme: from theme.js; font: a FONTS key; transparent: for the overlay (no black, no background);
@@ -100,6 +108,12 @@ export class Renderer {
       ctx.fillStyle = '#000';
       ctx.fillRect(0, 0, w, h);
     }
+    // Paper is a cream sheet: the sky effects would only be wasted work behind it.
+    const skyFx = sky && this.sceneId !== 'paper';
+    if (skyFx && this.opts.nebula !== false && w && h) {
+      this.nebula.prepare(this.theme, now);
+      this.nebula.draw(ctx, w, h, now, reduceMotion);
+    }
     if (sky && w && h) {
       this.background.prepare(w, h, dpr, this.theme, now);
       this.background.draw(ctx, w, h, now, reduceMotion);
@@ -123,6 +137,7 @@ export class Renderer {
     f.nextLine = lines[index + 1] || null;
     f.theme = this.theme;
     f.palette = this.opts.palette;
+    f.art = this.opts.art || null;
     f.fontFamily = this.fontFamily;
     f.displayMode = displayMode;
     f.mode = mode;
@@ -134,6 +149,11 @@ export class Renderer {
     f.chaos = this.chaos;
     f.previewNext = this.opts.previewNext !== false;
     f.songMap = this.opts.songMap !== false;
+    f.emotion = this.opts.emotion !== false;
+    // Shooting stars cross the sky between lines, behind the lyrics. Never with reduce motion.
+    if (skyFx && !reduceMotion && index >= 0 && this.opts.shootingStars !== false) {
+      drawShootingStars(ctx, streaksAt(lines, index, pos, w, h), this.theme, quiet);
+    }
     this._scene(this.sceneId).draw(f);
     if (flashOn) drawFlash(ctx, w, h, now, this.flashState, this.theme.star, reduceMotion);
     return true;

@@ -2,6 +2,7 @@
 // then is gone again; \ resets. Also with reduce-motion on, in every scene, and with no errors.
 //   node --experimental-websocket tools/flash-check.mjs
 import { startSession, syncedEntry, waitFor, sleep } from './lib/headless.mjs';
+import { SCENE_IDS } from '../web/js/scenes/index.js';
 
 const SONG = { title: 'Flash Song', artist: 'Check', album: 'S' };
 const LYRICS = [[4, 'Hold me in the light tonight'], [9, 'Stars are falling slow and bright'], [14, 'Sing it back to me again']];
@@ -20,7 +21,7 @@ try {
   await s.goto(`${s.base}/?prep`);
   await s.js(`localStorage.setItem('ls.settings', JSON.stringify({ backgroundStars: false }))`);
   await s.putCache(`lyrics:demo:${SONG.title}`, syncedEntry(SONG.title, SONG.artist, LYRICS));
-  for (const scene of ['constellation', 'karaoke', 'stack', 'kinetic']) {
+  for (const scene of SCENE_IDS) {
     for (const reduce of [false, true]) {
       console.log(`\n[${scene}${reduce ? ', reduce motion' : ''}]`);
       await s.send('Emulation.setEmulatedMedia', { features: [{ name: 'prefers-reduced-motion', value: reduce ? 'reduce' : 'no-preference' }] });

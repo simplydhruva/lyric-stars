@@ -2,6 +2,7 @@
 // no lyrics, an ad and a podcast, with pause, seek and skip, in every scene. `npm run mock`.
 import { startSession, waitFor, sleep } from './lib/headless.mjs';
 import { FakeSpotify, installFake, seedLogin } from './lib/fake-spotify.mjs';
+import { SCENE_IDS } from '../web/js/scenes/index.js';
 
 const results = [];
 const check = (name, ok, detail = '') => {
@@ -9,7 +10,7 @@ const check = (name, ok, detail = '') => {
   console.log(`  ${ok ? 'ok  ' : 'FAIL'} ${name}${detail ? ` (${detail})` : ''}`);
 };
 
-const SCENES = ['constellation', 'karaoke', 'stack', 'kinetic'];
+const SCENES = SCENE_IDS;
 
 // What the page shows right now: which panel, the toast, and whether the sky has lit pixels.
 const peek = (s) =>

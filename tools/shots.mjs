@@ -4,6 +4,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { startSession, syncedEntry, waitFor, sleep } from './lib/headless.mjs';
+import { SCENE_IDS } from '../web/js/scenes/index.js';
 
 const out = process.argv[2];
 if (!out) {
@@ -11,7 +12,7 @@ if (!out) {
   process.exit(2);
 }
 mkdirSync(out, { recursive: true });
-const ALL = ['constellation', 'karaoke', 'stack', 'kinetic'];
+const ALL = SCENE_IDS;
 const scenes = process.argv.length > 3 ? process.argv.slice(3) : ALL;
 const SIZES = [
   { name: '1920x1080', w: 1920, h: 1080, dpr: 1 },

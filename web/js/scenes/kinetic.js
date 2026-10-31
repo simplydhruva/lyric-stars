@@ -3,6 +3,7 @@
 // visible on its start frame; only its size and position settle afterwards. Line mode (M) brings the whole
 // line in at once. When the next line starts, the old one fades out. Pure function of the playback position.
 import { detectChorus } from './chorus.js';
+import { drawEmotion } from './emotion.js';
 import { exitAlpha, layoutKinetic, loudestIndex, revealedEnd, tilt, wordEntrance, wordScales } from './kinetic-layout.js';
 
 const rgba = ([r, g, b], a) => `rgba(${r},${g},${b},${a})`;
@@ -76,6 +77,7 @@ export function createKinetic() {
         if (!reduceMotion) ctx.rotate(tilt(index, i));
         ctx.font = `800 ${size}px ${frame.fontFamily}`;
         const strength = i === loudest ? 1 : clamp((scales[i] - 0.85) / 0.8, 0, 0.7);
+        drawEmotion(ctx, frame, word.text, pos - start, index * 31 + i, size, alpha, () => ctx.fillText(word.text, 0, 0));
         ctx.fillStyle = rgba(mix(star, hot, strength), alpha * (frame.quiet ? 0.35 : 1));
         ctx.fillText(word.text, 0, 0);
         ctx.restore();

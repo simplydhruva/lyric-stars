@@ -1,10 +1,11 @@
 // Checks, scene by scene, that each word shows up on its exact start time. The demo song is paused at an
 // exact position and the sky canvas is compared one millisecond before a word starts, on its start, and one
 // frame (17 ms) later. Reduce motion is on so the background holds still and any pixel change is the lyrics.
-//   constellation / kinetic: the word must appear (the picture changes) at the start itself.
+//   every scene except karaoke and stack: the word must appear (the picture changes) at the start itself.
 //   karaoke / stack: the word is already on screen dim; its fill must have begun one frame after the start.
 // `npm run timing`
 import { startSession, syncedEntry, waitFor, sleep } from './lib/headless.mjs';
+import { SCENE_IDS } from '../web/js/scenes/index.js';
 
 const SONG = { title: 'Timing Song', artist: 'Check', album: 'T' };
 const LYRICS = [
@@ -13,8 +14,8 @@ const LYRICS = [
   [14, 'Sing it back to me again'],
   [19, 'Never let it go away'],
 ];
-const SCENES = ['constellation', 'karaoke', 'stack', 'kinetic'];
-const APPEARS = new Set(['constellation', 'kinetic']);
+const SCENES = SCENE_IDS;
+const APPEARS = new Set(SCENE_IDS.filter((id) => id !== 'karaoke' && id !== 'stack'));
 
 const sum = (s) =>
   s.js(`(() => {

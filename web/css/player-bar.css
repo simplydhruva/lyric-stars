@@ -86,3 +86,7 @@ html.click-through #player { display: none; }
   #player { bottom: 112px; }
   html.overlay #player { bottom: 80px; }
 }
+
+/* The paper scene is cream: the time labels and the empty part of the track go dark so they can be read. */
+html[data-scene="paper"] .pb-progress { color: rgba(40, 34, 52, 0.8); }
+html[data-scene="paper"] .pb-track::before { background: rgba(40, 34, 52, 0.25); }

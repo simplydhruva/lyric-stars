@@ -75,6 +75,9 @@ export class SettingsPanel {
       <button type="button" data-set="resetSky">Reset sky to defaults</button>
       <label class="check"><input type="checkbox" name="previewNext"${g('previewNext') ? ' checked' : ''}> Preview the next line as faint dots (constellation)</label>
       <label class="check"><input type="checkbox" name="songMap"${g('songMap') ? ' checked' : ''}> Show the whole song as one map at the end (constellation)</label>
+      <label class="check"><input type="checkbox" name="nebula"${g('nebula') ? ' checked' : ''}> Drifting nebula glow</label>
+      <label class="check"><input type="checkbox" name="shootingStars"${g('shootingStars') ? ' checked' : ''}> Shooting stars between lines</label>
+      <label class="check"><input type="checkbox" name="emotion"${g('emotion') ? ' checked' : ''}> Glow on words like love, fire and night (some scenes)</label>
       <label class="check"><input type="checkbox" name="backgroundStars"${g('backgroundStars') ? ' checked' : ''}> Background stars</label>
       <label class="check"><input type="checkbox" name="reduceMotion"${g('reduceMotion') ? ' checked' : ''}> Reduce motion (no drift, twinkle or pop)</label>
       <label class="check"><input type="checkbox" name="fullFrameRate"${g('fullFrameRate') ? ' checked' : ''}> Match a fast screen's refresh rate (smoother on 120 Hz+, uses more power)</label>

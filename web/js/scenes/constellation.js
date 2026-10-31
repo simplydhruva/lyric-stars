@@ -3,6 +3,7 @@
 // position, so seeking, pausing and resuming never leave stale animation behind.
 import { placeLine, hash } from '../sky-layout.js';
 import { detectChorus } from './chorus.js';
+import { drawEmotion } from './emotion.js';
 
 const CENTER = [255, 250, 235];
 const FADE_OUT_MS = 700;
@@ -178,7 +179,9 @@ export function createConstellation() {
       ctx.textBaseline = s.labelBelow ? 'top' : 'bottom';
       ctx.fillStyle = rgba(LABEL, (0.45 + 0.55 * e) * alpha);
       const off = font * 0.9;
-      ctx.fillText(words[k].text, s.x, s.labelBelow ? s.y + off : s.y - off);
+      const ly = s.labelBelow ? s.y + off : s.y - off;
+      drawEmotion(ctx, frame, words[k].text, t, index * 31 + k, font, alpha, () => ctx.fillText(words[k].text, s.x, ly));
+      ctx.fillText(words[k].text, s.x, ly);
     }
   }
 

@@ -70,7 +70,7 @@ function fakeCtx() {
     get(t, k) {
       if (k in t) return t[k];
       if (k === 'measureText') return (text) => ({ width: text.length * 10 });
-      if (k === 'createRadialGradient') return () => ({ addColorStop() {} });
+      if (k === 'createRadialGradient' || k === 'createLinearGradient') return () => ({ addColorStop() {} });
       return (...args) => calls.push([k, ...args]);
     },
     set(t, k, v) {

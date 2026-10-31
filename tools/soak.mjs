@@ -3,6 +3,7 @@
 // page's JS heap, main-thread busy time and frames per second every 30 s.
 //   node --experimental-websocket tools/soak.mjs [--minutes 10]
 import { startSession, syncedEntry, waitFor, sleep } from './lib/headless.mjs';
+import { SCENE_IDS } from '../web/js/scenes/index.js';
 
 const i = process.argv.indexOf('--minutes');
 const minutes = i > 0 ? Number(process.argv[i + 1]) : 10;
@@ -35,13 +36,13 @@ try {
   }
   await sleep(1200);
   const scene = await s.js(`document.documentElement.dataset.scene`);
-  if (!['constellation', 'karaoke', 'stack', 'kinetic'].includes(scene)) fail(`odd scene "${scene}"`);
+  if (!SCENE_IDS.includes(scene)) fail(`odd scene "${scene}"`);
   if ((await lit()) < 5) fail('nothing drawn after the key burst');
   console.log(`  scene after the burst: ${scene}, lit samples ${await lit()}`);
 
   console.log('burst: resize while playing, in every scene');
-  for (const sc of ['constellation', 'karaoke', 'stack', 'kinetic']) {
-    for (let n = 0; n < 4 && (await s.js(`document.documentElement.dataset.scene`)) !== sc; n++) await s.key('v');
+  for (const sc of SCENE_IDS) {
+    for (let n = 0; n < SCENE_IDS.length && (await s.js(`document.documentElement.dataset.scene`)) !== sc; n++) await s.key('v');
     for (const [w, h] of [[1920, 1080], [700, 900], [320, 480], [2560, 1440], [900, 300], [1280, 720]]) {
       await s.resize(w, h);
       await sleep(250);
