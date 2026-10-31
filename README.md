@@ -101,8 +101,11 @@ Diagnostics (`D`) shows which source and player are in use.
 
 ## Look
 
-- **Scenes (`V`):** *Constellation* (the stars) and *Karaoke* (centered lines, a gold fill sweeping across each word between
-  its start and end, the previous and next lines faint above and below). Your pick is remembered separately for window,
+- **Scenes (`V`):** *Constellation* (the stars), *Karaoke*, *Scrolling stack* and *Kinetic*. Karaoke is centered lines, a gold fill sweeping across each word between
+  its start and end, the previous and next lines faint above and below. The stack keeps the current line big in the middle with two
+  lines above and three below, gliding up on each new line; `M` switches it (and Kinetic) between word-by-word fill and the whole line lit.
+  Kinetic slams each word in exactly when it is sung: the loudest word of a line is the biggest (a guess from word length and how long it
+  is held, since there is no audio), and lines that repeat in the song (the chorus) are drawn bigger. Your pick is remembered separately for window,
   fullscreen and overlay; the overlay starts on Karaoke. Settings has a "Random scene each song" option; with it on, `V`
   changes only the current song. Scenes are pure functions of the playback position, so seek and pause never leave stale animation.
 - **Settings (`S`):** lyric source, word/line mode, theme (Gold, Ice, Rose or a custom color), album colors,
@@ -142,9 +145,16 @@ web/js/corrections.js     your timings: merge, import, export (also the referenc
 web/js/editor.js          tap-to-sync editor
 web/js/harness.js         scores the estimator; tools/harness.mjs runs it on test/reference
 web/js/renderer.js        canvas host: sizing, background, idle-frame skipping, hands lyrics to the active scene
-web/js/scenes/            index.js (registry, frame object), constellation.js, karaoke.js, karaoke-layout.js (pure maths)
+web/js/scenes/            index.js (registry, frame object), constellation.js, karaoke.js, stack.js, kinetic.js,
+                          karaoke-layout.js / stack-layout.js / kinetic-layout.js (pure maths), line-draw.js (shared line drawing)
 tools/visual.mjs          pixel check: renders fixed frames to PNGs (--out) or compares against them (--compare)
-tools/lib/headless.mjs    shared headless-browser helpers for smoke.mjs and visual.mjs
+tools/lib/headless.mjs    shared headless-browser helpers for the browser checks below
+tools/lib/fake-spotify.mjs  scripted fake Spotify and lyrics service (songs, no-lyrics song, ad, podcast; pause, seek, skip)
+tools/mock.mjs            runs the whole app against the fake Spotify in every scene (npm run mock)
+tools/timing-check.mjs    every word visible on its exact start time in every scene (npm run timing)
+tools/shots.mjs           screenshots of every scene at 1080p, 1440p, 150% and 200% scaling and a small window (npm run shots)
+tools/soak.mjs            key, resize and reduce-motion abuse, then a looping soak reporting heap, CPU and fps (npm run soak -- --minutes 10)
+tools/electron-check.mjs  launches the real desktop app in each display style; checks always-on-top and click-through (npm run check:electron)
 web/js/background.js      nebula, drifting and twinkling background stars
 web/js/theme.js           themes, fonts, album palette extraction (palette.js loads the image)
 web/js/settings-panel.js  settings panel

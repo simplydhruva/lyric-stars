@@ -71,9 +71,11 @@ export async function startSession({ port = 5196, width = 1280, height = 720, re
     let id = 0;
     const pending = new Map();
     const logs = [];
+    const listeners = new Map(); // CDP event name -> handler
     ws.onmessage = (m) => {
       const d = JSON.parse(m.data);
       if (d.id) pending.get(d.id)?.(d);
+      else if (listeners.has(d.method)) listeners.get(d.method)(d.params);
       else if (d.method === 'Runtime.exceptionThrown') logs.push(`exception: ${d.params.exceptionDetails.exception?.description || d.params.exceptionDetails.text}`);
       else if (d.method === 'Runtime.consoleAPICalled' && ['error', 'assert'].includes(d.params.type)) logs.push(`console.${d.params.type}: ${d.params.args.map((a) => a.value ?? a.description).join(' ')}`);
     };
@@ -97,6 +99,7 @@ export async function startSession({ port = 5196, width = 1280, height = 720, re
       base,
       send,
       js,
+      on: (method, fn) => listeners.set(method, fn),
       logs, // console errors and uncaught exceptions seen so far
       goto: (url) => send('Page.navigate', { url }),
       key: async (k, code) => {

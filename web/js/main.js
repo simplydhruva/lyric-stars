@@ -81,6 +81,8 @@ app.makeReport = () =>
     })
   );
 
+app.displayLatencyMs = () => latency.ms; // for tools/timing-check.mjs
+
 // Lyric time at a moment: where the song is, shifted by the offsets. Positive offsets show lyrics earlier.
 function lyricTime(t) {
   return app.clock.position(t) + sync.globalOffset() + sync.songOffset(app.track?.key);

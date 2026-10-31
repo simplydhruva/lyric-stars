@@ -126,7 +126,24 @@ async function scenes() {
       await open();
       assertEq(await scene(), 'karaoke');
     });
-    await step('V wraps back to the constellation', async () => {
+    await step('V goes on through the stack and kinetic scenes, each draws, then wraps to the constellation', async () => {
+      for (const [id, name] of [['stack', 'Scrolling stack'], ['kinetic', 'Kinetic'], ['constellation', 'Constellation']]) {
+        await key('v', 'KeyV');
+        await waitFor(id, async () => (await scene()) === id);
+        assertEq(await toastText(), `Scene: ${name}`);
+        await waitFor(`${id} draws`, async () => (await lit()) > 50);
+      }
+    });
+    await step('M switches the stack between word-by-word fill and the whole line lit', async () => {
+      await js(`document.documentElement.dataset.scene`);
+      await key('v', 'KeyV'); // karaoke
+      await key('v', 'KeyV'); // stack
+      await waitFor('stack', async () => (await scene()) === 'stack');
+      const before = await js(`document.getElementById('sky').toDataURL()`);
+      await key('m', 'KeyM');
+      await waitFor('the redraw', async () => (await js(`document.getElementById('sky').toDataURL()`)) !== before);
+      await key('m', 'KeyM'); // back to word by word, and on to the constellation
+      await key('v', 'KeyV');
       await key('v', 'KeyV');
       await waitFor('constellation', async () => (await scene()) === 'constellation');
     });

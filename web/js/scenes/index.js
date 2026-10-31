@@ -10,15 +10,19 @@
 //   theme, palette          colors for this song: theme.star/core/label are [r, g, b]; palette is the album colors or null
 //   fontFamily              CSS font stack chosen in settings
 //   displayMode             'window' | 'fullscreen' | 'overlay'
-//   mode                    'word' | 'line' (settings: show word by word or line by line)
+//   mode                    'word' | 'line' (M: word by word or line by line; the stack and kinetic scenes follow it too)
 //   reduceMotion, playing, quiet
 //   seed, spread, chaos     the sky's layout inputs (constellation)
 import { createConstellation } from './constellation.js';
 import { createKaraoke } from './karaoke.js';
+import { createStack } from './stack.js';
+import { createKinetic } from './kinetic.js';
 
 export const SCENES = [
   { id: 'constellation', name: 'Constellation', create: createConstellation },
   { id: 'karaoke', name: 'Karaoke', create: createKaraoke },
+  { id: 'stack', name: 'Scrolling stack', create: createStack },
+  { id: 'kinetic', name: 'Kinetic', create: createKinetic },
 ];
 
 export const SCENE_IDS = SCENES.map((s) => s.id);
