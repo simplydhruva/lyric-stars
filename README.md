@@ -70,11 +70,8 @@ Diagnostics (`D`) shows which source and player are in use.
 
 ## Now playing and player controls
 
-- **No lyrics:** when lyrics aren't found, or the song is instrumental, a now-playing scene replaces the empty screen:
-  the album cover (largest size Spotify offers) floats and breathes in a glow, a ring pulses with the song position, and
-  a few stars drift around it. The glow and stars take two or three colors from the cover (gold if there is no cover or
-  it fails to load). Pausing freezes the drift and dims the glow; with reduce motion on the scene stands still.
-  **Retry** searches again. The cover is the 640 px image from `album.images` (64 px for thumbnails), preloaded when the
+- **No lyrics:** whenever there is nothing to sing along to, a now-playing scene replaces the empty screen, with a one-line reason: "Lyrics not found", "Lyrics service unreachable" (also asked again by itself after 15 s, 30 s, up to 2 minutes), "You’re offline", "Instrumental" or "Lyrics found but not timed". It shows the album cover (largest size Spotify offers), the song and artist, and a few small stars drifting and twinkling in colors taken from the cover (gold if there is no cover). Pausing freezes the drift; with reduce motion on the scene stands still. The soft colored glow behind the cover and the pulsing ring only appear when Background effects is above 0.
+  **Retry** searches again; hover the label for the exact reason, and the browser console logs every lookup (query, status, result count, rejected matches). The cover is the largest image in `album.images` (64 px for thumbnails), preloaded when the
   song starts and kept per track. The Windows app reports no cover, so when you're logged in the song is looked up on
   Spotify by title and artist (or the account's own report of it is used); with no match, or no login, a gold star stands in.
 - **Player bar** (bottom centre, fades after 3 s without mouse movement): previous, play/pause, next, and a progress bar you
@@ -119,8 +116,7 @@ Diagnostics (`D`) shows which source and player are in use.
   font (system fonts only), background stars, reduce motion, corner title/art, global offset, lyric cache, disconnect.
 - **Album colors** (off by default): two or three colors are read from the 64 px cover; grey or
   black-and-white covers fall back to the chosen theme. Colors are lifted so they always glow on black.
-- **Background:** a faint nebula in the theme colors, two layers of dust stars drifting at different speeds, and (Settings, on by default) a slowly drifting nebula glow in the theme or album colors. Off in Paper and the transparent overlay.
-- **Shooting stars:** a dim streak crosses the sky in the gap after a line ends (gaps of 0.4 s or more). Off with reduce motion, in the overlay and in Paper.
+- **Glow and Background effects (Settings → Sky, two sliders):** the background is plain black by default. **Background effects** (0–100, default 0) fades in a faint nebula, drifting dust stars and twinklers, and from 50 up a dim shooting star in the gap after a line ends (gaps of 0.4 s or more). **Glow** (0–100, default 25) sets the small glow on the star of the word being sung, and the soft light in a few scenes (Neon, Lanterns, Orbit, Rain, Ribbon, Terminal, Ink, emotion words); 0 removes it. Text and lines stay crisp. Background effects are always off in Paper and the transparent overlay, and with reduce motion nothing drifts or streaks.
 - **Emotion words:** English words about fire, night, love, water and sun get a small coloured glow in Constellation, Karaoke, Kinetic, Stack, Neon and Lanterns. Other languages get no glow. Each of these three can be switched off in Settings.
   While paused it repaints at about 20 fps; with reduce motion on (default follows Windows "Animation effects")
   nothing moves and a paused sky does not repaint at all.
@@ -149,8 +145,8 @@ web/config.js             BUILT_IN_CLIENT_ID and UPDATE_REPO for friend builds
 web/js/auth.js            Spotify PKCE login and silent refresh
 web/js/sources/           auto.js (Automatic), spotify.js, mediaSession.js, players.js (player names, title tidying),
                           demo.js, clock.js (position smoothing)
-web/js/lyrics/            lrc.js (parser), match.js (no-wrong-lyrics rules), lrclib.js (provider)
-web/js/cache.js           lyric cache client (found: kept; not found: 1 day)
+web/js/lyrics/            lrc.js (parser), match.js (no-wrong-lyrics rules), lrclib.js (provider: cleans title and artist, tries get with album, get without, search, then a broader search; logs each request to the console)
+web/js/cache.js           lyric cache client (found: kept; a true not found: 30 minutes; a service error is never saved)
 web/js/timing.js          word timing: real tags or taps, else syllable estimate
 web/js/syllables.js       syllable counts; data/syllable-exceptions.js is generated from CMUdict
 web/js/sync.js            per-song and global offsets, display latency
@@ -171,6 +167,9 @@ tools/mock.mjs            runs the whole app against the fake Spotify in every s
 tools/timing-check.mjs    every word visible on its exact start time in every scene (npm run timing)
 tools/shots.mjs           screenshots of every scene at 1080p, 1440p, 150% and 200% scaling and a small window (npm run shots)
 tools/soak.mjs            key, resize and reduce-motion abuse, then a looping soak reporting heap, CPU and fps (npm run soak -- --minutes 10)
+tools/lrclib-probe.mjs    calls the real LRCLIB for five well-known songs and prints status and timing (node tools/lrclib-probe.mjs)
+tools/nowplaying-cases.mjs the no-lyrics scene for not found, service error, instrumental and not-timed, with pictures (node --experimental-websocket tools/nowplaying-cases.mjs OUT_DIR)
+tools/glow-shots.mjs      before/after pictures of blur and glow at 1080p and 200% scaling (node --experimental-websocket tools/glow-shots.mjs OUT_DIR)
 tools/beat-check.mjs      plays a drum loop and checks the desktop app finds its tempo (npm run check:beat; needs speakers)
 tools/electron-check.mjs  launches the real desktop app in each display style; checks always-on-top and click-through (npm run check:electron)
 web/js/background.js      nebula, drifting and twinkling background stars
