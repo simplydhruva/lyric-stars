@@ -2,6 +2,9 @@
 
 Spotify lyrics as a constellation. See `Lyric Stars Product Requirements Document.md` for the plan.
 
+**Platform:** the desktop app and the "This PC" source (Windows media session) are Windows 10/11 only.
+On macOS or Linux, only the browser version with the Spotify source works; the media-session endpoint returns 501 there.
+
 ## Run (browser version)
 
 Requires Node 20+. The browser version needs no dependencies.

@@ -93,7 +93,12 @@ async function handleCache(req, res, key) {
     }
   }
   if (req.method === 'PUT') {
-    const value = JSON.parse(await readBody(req));
+    let value;
+    try {
+      value = JSON.parse(await readBody(req));
+    } catch {
+      return send(res, 400, 'bad json');
+    }
     await fs.mkdir(path.dirname(file), { recursive: true });
     const tmp = `${file}.${process.pid}.tmp`;
     await fs.writeFile(tmp, JSON.stringify({ key, value }));
