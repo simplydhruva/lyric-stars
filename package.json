@@ -12,6 +12,7 @@
     "desktop": "node tools/build-helper.mjs --if-missing && electron .",
     "helper": "node tools/build-helper.mjs",
     "test": "node --test test/",
+    "smoke": "node --experimental-websocket tools/smoke.mjs",
     "harness": "node tools/harness.mjs",
     "icons": "node tools/make-icon.mjs",
     "predist": "node tools/build-helper.mjs",

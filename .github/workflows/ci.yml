@@ -21,6 +21,8 @@ jobs:
       # The tests need no Electron binary, so skip its download.
       - run: npm ci --ignore-scripts
       - run: npm test
+      # Drives the demo in the Chrome that ships on the runner: scene, bar, keys, seek, Retry.
+      - run: npm run smoke
 
   # Builds the installer for a tagged release and keeps it as a workflow artifact.
   # It does not publish: the release checklist (docs/RELEASE-CHECKLIST.md) is manual.
