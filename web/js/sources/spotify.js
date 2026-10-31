@@ -1,5 +1,6 @@
 // Spotify Web API playback source (GET /v1/me/player).
 import { getAccessToken, AuthError } from '../auth.js';
+import { imagesOf } from '../covers.js';
 
 const PLAYER_URL = 'https://api.spotify.com/v1/me/player?additional_types=episode';
 export const CURRENTLY_PLAYING_URL = 'https://api.spotify.com/v1/me/player/currently-playing?additional_types=episode';
@@ -48,8 +49,7 @@ export function classifyForbidden(message) {
 
 export function trackFromItem(item) {
   const artists = (item.artists || []).map((a) => a.name);
-  const images = item.album?.images || [];
-  const largest = images.reduce((a, b) => ((b.width || 0) > (a?.width || 0) ? b : a), images[0]);
+  const { large, small } = imagesOf(item);
   return {
     key: item.id ? `sp:${item.id}` : `uri:${item.uri}`,
     id: item.id,
@@ -58,8 +58,8 @@ export function trackFromItem(item) {
     artist: artists.join(', '),
     album: item.album?.name || '',
     durationMs: item.duration_ms,
-    art: images.at(-1)?.url, // smallest: for the corner and the palette
-    artLarge: largest?.url, // largest: for the now-playing cover
+    art: small, // 64 px: for the corner and the palette
+    artLarge: large, // 640 px: for the now-playing cover
   };
 }
 

@@ -23,6 +23,8 @@ import * as sync from './sync.js';
 import { SettingsPanel } from './settings-panel.js';
 import { resolveTheme } from './theme.js';
 import { albumPalette } from './palette.js';
+import { preloadCover } from './covers.js';
+import { findCover } from './cover-search.js';
 import { FrameStats } from './perf.js';
 
 const $ = (id) => document.getElementById(id);
@@ -306,7 +308,7 @@ function onSample(sample) {
   app.playback = sample;
   if (sample.kind === 'track') {
     if (sample.track.key !== app.track?.key) onTrackChange(sample.track);
-    else if (sample.track.art !== app.track.art || sample.track.artLarge !== app.track.artLarge) {
+    else if (sample.track.artLarge && sample.track.artLarge !== app.track.artLarge) {
       // The cover showed up after the song did (the PC's Spotify app has none; the account does).
       app.track = sample.track;
       loadPalette(sample.track);
@@ -339,7 +341,23 @@ function onTrackChange(track) {
   loadPalette(track);
   applyVisuals();
   clearTimeout(app.retryTimer);
-  if (track) loadLyrics(track);
+  if (track) {
+    preloadCover(track); // ready by the time lyrics fail
+    if (!track.artLarge) lookUpCover(track);
+    loadLyrics(track);
+  }
+}
+
+// The PC's media session has no cover: find the song on Spotify (needs the login), else the scene shows its star.
+async function lookUpCover(track) {
+  if (!auth.isLoggedIn()) return;
+  const cover = await findCover(track);
+  if (!cover || app.track?.key !== track.key || app.track.artLarge) return;
+  app.track = { ...app.track, ...cover, album: app.track.album || cover.album };
+  preloadCover(app.track);
+  loadPalette(app.track);
+  applyVisuals();
+  updateView();
 }
 
 // ---- lyrics ----------------------------------------------------------------

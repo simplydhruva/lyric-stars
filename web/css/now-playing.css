@@ -102,6 +102,18 @@
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.np-album {
+  margin: 4px 0 0;
+  max-width: min(90vw, 620px);
+  font-size: clamp(11px, 1.1vmin + 5px, 14px);
+  color: var(--muted);
+  opacity: 0.75;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.np-album:empty { display: none; }
 .np-status {
   display: flex;
   align-items: center;

@@ -16,6 +16,7 @@ const MARKUP = `
   </div>
   <h1 class="np-title"></h1>
   <p class="np-artist"></p>
+  <p class="np-album"></p>
   <div class="np-status"><span class="np-label"></span><button type="button" class="np-retry">Retry</button></div>`;
 
 export class NowPlaying {
@@ -32,6 +33,7 @@ export class NowPlaying {
       img: q('.np-cover img'),
       title: q('.np-title'),
       artist: q('.np-artist'),
+      album: q('.np-album'),
       label: q('.np-label'),
       retry: q('.np-retry'),
     };
@@ -47,6 +49,12 @@ export class NowPlaying {
     this.colors = sceneColors();
     this.dirty = true;
     this.el.img.addEventListener('load', () => this.el.img.classList.add('ready'));
+    // Reading pixels needs CORS; if that load fails, still show the picture without it (colours stay gold).
+    this.el.img.addEventListener('error', () => {
+      if (!this.el.img.crossOrigin || !this.artKey) return;
+      this.el.img.removeAttribute('crossorigin');
+      this.el.img.src = this.artKey;
+    });
     this.el.retry.addEventListener('click', () => !this.busy && onRetry());
     new ResizeObserver(() => this._resize()).observe(this.el.stage);
   }
@@ -66,6 +74,7 @@ export class NowPlaying {
       this.stars = makeStars(hashString(track.key || track.title), STAR_COUNT);
       this.el.title.textContent = track.title;
       this.el.artist.textContent = track.artist;
+      this.el.album.textContent = track.album || '';
       this.root.classList.remove('np-enter');
       void this.root.offsetWidth; // restart the 500 ms fade and slide
       this.root.classList.add('np-enter');
@@ -119,6 +128,7 @@ export class NowPlaying {
     this.artKey = track.artLarge || track.art || '';
     const img = this.el.img;
     img.classList.remove('ready'); // the ★ square shows until the cover loads, or for good if it fails
+    img.crossOrigin = 'anonymous'; // the same mode the preload used, so the download is reused
     if (this.artKey) img.src = this.artKey;
     else img.removeAttribute('src');
     // Colours come from the cover; gold until they are known, and if the cover fails.
