@@ -4,7 +4,7 @@ Spotify lyrics as a constellation. See `Lyric Stars Product Requirements Documen
 
 ## Run (browser version)
 
-Requires Node 20+. No dependencies to install.
+Requires Node 20+. The browser version needs no dependencies.
 
 ```
 npm start      # serves http://127.0.0.1:5173/
@@ -14,13 +14,35 @@ npm run harness  # timing report for the reference songs (add -- --update-baseli
 
 Open http://127.0.0.1:5173/ (localhost redirects there, because Spotify only accepts loopback IPs).
 
-- **Keys:** `S` settings, `F` fullscreen, `M` word/line mode, `D` diagnostics, `E` sync editor, `Esc` closes panels,
+- **Keys:** `S` settings, `F` fullscreen, `O` overlay (desktop app), `M` word/line mode, `D` diagnostics, `E` sync editor, `Esc` closes panels,
   `[` / `]` lyrics earlier / later for this song (50 ms; hold Shift for 10 ms).
 - **Demo without Spotify:** http://127.0.0.1:5173/?demo&start=30 plays Coldplay "Yellow" with no audio.
   `P` pauses, arrow keys seek 10 s. Other songs: `?demo&title=...&artist=...&album=...&duration=<seconds>`.
   Add `&art=https://i.scdn.co/image/...` to try album colors.
 - **Lyric cache:** `%APPDATA%\LyricStars\cache` (override with `LYRICSTARS_DATA`). Your timings live in
   `%APPDATA%\LyricStars\timings` and are not removed when the cache is cleared.
+
+## Desktop app
+
+Friends: see [docs/INSTALL.md](docs/INSTALL.md).
+
+```
+npm install      # Electron and electron-builder (dev only)
+npm run desktop  # run the desktop app from source
+npm run dist     # build dist/Lyric-Stars-Setup-<version>.exe (no Node needed to run it)
+npm run icons    # redraw electron/icons/*.png
+```
+
+- The same page, served by the same local server on 127.0.0.1:5173, inside Electron. The page gets no Node access, only a
+  small `window.lyricStars` bridge. Navigation is locked to that origin; only Spotify, the Spotify developer site and GitHub open in the browser.
+- **Styles:** window, fullscreen (`F`) and overlay (`O`): always on top, see-through, with opacity, background dim and
+  click-through. Each style remembers its own size, place and monitor in `%APPDATA%LyricStarsdesktopdesktop.json`.
+- **Shortcuts (any app):** `Ctrl+Alt+L` show or hide, `Ctrl+Alt+K` click-through. Tray: show, styles, click-through,
+  start with Windows, open to tray (no window or drawing until shown), update check, quit. Closing the window quits.
+- **Login:** opens the system browser. That tab hands the code back to the app via `POST /api/login-handoff`; the PKCE verifier never
+  leaves the app. Tokens are encrypted with Electron safeStorage (DPAPI) in `desktop	okens.bin`.
+- **Updates:** set `UPDATE_REPO` in `web/config.js`. The app then reads the latest GitHub release once a day and links to it. It never downloads code.
+- **Testing overrides:** `LYRICSTARS_PORT`, `LYRICSTARS_DATA`, `LYRICSTARS_START` (start path, e.g. `/?demo&start=30`).
 
 ## Timing
 
@@ -51,9 +73,15 @@ Open http://127.0.0.1:5173/ (localhost redirects there, because Spotify only acc
 ## Layout
 
 ```
-server.js                 local server: static files, disk cache API, media-session probe
+server.js                 local server: static files, disk cache API, media-session probe, login hand-off
+electron/main.mjs         desktop shell: windows and styles, tray, shortcuts, IPC, navigation lock
+electron/layout.mjs       saved state and on-screen placement per style (pure, tested)
+electron/secrets.mjs      encrypted token store
+electron/updates.mjs      GitHub release check (pure, tested)
+electron/preload.cjs      the window.lyricStars bridge
+docs/INSTALL.md           friend install guide (SmartScreen, keys, releasing)
 tools/smtc-probe.ps1      Windows media-session reader (spike; becomes the native helper)
-web/config.js             BUILT_IN_CLIENT_ID for friend builds
+web/config.js             BUILT_IN_CLIENT_ID and UPDATE_REPO for friend builds
 web/js/auth.js            Spotify PKCE login and silent refresh
 web/js/sources/           spotify.js, mediaSession.js, demo.js, clock.js (position smoothing)
 web/js/lyrics/            lrc.js (parser), match.js (no-wrong-lyrics rules), lrclib.js (provider)

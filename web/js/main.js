@@ -20,6 +20,8 @@ import { albumPalette } from './palette.js';
 import { FrameStats } from './perf.js';
 
 const $ = (id) => document.getElementById(id);
+// The desktop app's bridge (electron/preload.cjs), or null in a normal browser.
+const desktop = globalThis.lyricStars || null;
 
 export const app = {
   source: null,
@@ -37,6 +39,7 @@ export const app = {
   mode: settings.get('mode'),
   loadSeq: 0,
   retryTimer: null,
+  desktop: desktop?.info() || null, // { style, overlay, update, ... } from the desktop shell
 };
 
 const renderer = new Renderer($('sky'));
@@ -71,6 +74,7 @@ const settingsPanel = new SettingsPanel($('settings'), {
   clearCache: cache.clearAll,
   canDisconnect: () => settings.get('source') === 'spotify' && auth.isLoggedIn(),
   disconnect,
+  desktop: desktop && (() => ({ info: app.desktop, bridge: desktop })),
 });
 
 function nudgeGlobal(ms) {
@@ -89,9 +93,36 @@ function applyVisuals() {
     font: g('font'),
     reduceMotion: g('reduceMotion'),
     backgroundStars: g('backgroundStars'),
+    transparent: app.desktop?.style === 'overlay',
   });
   updateCorner();
 }
+
+// Desktop shell state: display style, overlay look, update notice.
+function applyDesktop(info) {
+  const prev = app.desktop;
+  app.desktop = info;
+  const overlay = info.style === 'overlay';
+  const root = document.documentElement;
+  root.classList.toggle('overlay', overlay);
+  root.classList.toggle('click-through', overlay && info.overlay.clickThrough);
+  root.style.setProperty('--backdrop', String(info.overlay.backdrop));
+  $('grip').hidden = !overlay;
+  $('btn-overlay').hidden = false;
+  $('btn-overlay').textContent = overlay ? 'Window' : 'Overlay';
+  $('btn-fullscreen').hidden = overlay;
+  $('btn-fullscreen').textContent = info.style === 'fullscreen' ? 'Exit fullscreen' : 'Fullscreen';
+  if (prev && overlay && info.overlay.clickThrough !== prev.overlay.clickThrough) {
+    toast(info.overlay.clickThrough ? `Click-through on · ${shortcut(info.shortcuts.toggleClickThrough)} turns it off` : 'Click-through off');
+  }
+  if (info.update?.available && !prev?.update?.available) toast(`Lyric Stars ${info.update.version} is available · Settings → Desktop app`);
+  applyVisuals();
+  // Don't rebuild the panel under a slider being dragged.
+  if (!document.activeElement?.matches('#settings input[type=range]')) settingsPanel.render();
+}
+
+const shortcut = (accel) => accel.replace('Control', 'Ctrl');
+
 
 function loadPalette(track) {
   app.palette = null;
@@ -141,7 +172,8 @@ function startSource() {
     app.source = new MediaSessionSource(handlers);
   } else {
     if (!auth.getClientId()) return setAuthState('setup');
-    if (!auth.isLoggedIn()) return setAuthState(app.authState && app.authState !== 'setup' ? app.authState : 'connect');
+    // Keep a login error (and its message) on screen until the user acts on it.
+    if (!auth.isLoggedIn()) return app.authState && app.authState !== 'setup' ? setAuthState(app.authState, app.authMessage) : setAuthState('connect');
     app.source = new SpotifySource(handlers);
   }
   app.authState = null;
@@ -375,7 +407,9 @@ setInterval(() => app.problem?.code === 'rate-limited' && updateView(), 1000);
 // ---- actions ---------------------------------------------------------------
 
 const actions = {
-  login: () => auth.beginLogin(),
+  login: async () => {
+    if ((await auth.beginLogin()) === 'browser') setAuthState('login-in-browser');
+  },
   setup: () => setAuthState('setup'),
   'use-media-session': () => {
     settings.set('source', 'media-session');
@@ -423,12 +457,14 @@ function toggleMode() {
 }
 
 function toggleFullscreen() {
+  if (desktop) return desktop.toggleFullscreen();
   if (document.fullscreenElement) document.exitFullscreen();
   else document.documentElement.requestFullscreen().catch(() => {});
 }
 
 $('btn-mode').addEventListener('click', toggleMode);
 $('btn-fullscreen').addEventListener('click', toggleFullscreen);
+$('btn-overlay').addEventListener('click', () => desktop?.toggleOverlay());
 $('btn-wrong').addEventListener('click', rejectCurrentLyrics);
 $('btn-spike').addEventListener('click', toggleSpike);
 $('btn-editor').addEventListener('click', toggleEditor);
@@ -462,6 +498,7 @@ window.addEventListener('keydown', (e) => {
     const step = e.shiftKey ? sync.FINE_STEP_MS : sync.OFFSET_STEP_MS;
     nudgeSongOffset(e.code === 'BracketLeft' ? step : -step);
   } else if (k === 'f') toggleFullscreen();
+  else if (k === 'o' && desktop) desktop.toggleOverlay();
   else if (k === 'm') toggleMode();
   else if (k === 'd') toggleSpike();
   else if (k === 'e') toggleEditor();
@@ -519,16 +556,34 @@ async function boot() {
   applyVisuals();
   // Follow Windows "Animation effects" while the user hasn't chosen.
   matchMedia('(prefers-reduced-motion: reduce)').addEventListener?.('change', applyVisuals);
+  if (desktop) {
+    applyDesktop(app.desktop);
+    desktop.onState(applyDesktop);
+    // The browser tab Spotify returned to handed the login back to us.
+    desktop.onLogin((params) => finishLogin(auth.completeLogin(params)));
+  }
+  const result = await finishLogin(auth.handleRedirect(), { start: false });
+  if (result === 'handed-off') {
+    // This is the browser tab of a desktop login; the app takes it from here.
+    setAuthState('login-handed-off');
+    return;
+  }
+  startSource();
+  requestAnimationFrame(frame);
+}
+
+async function finishLogin(promise, { start = true } = {}) {
+  let result;
   try {
-    await auth.handleRedirect();
-    app.authState = null;
+    result = await promise;
+    if (result) app.authState = null;
   } catch (e) {
     const code = e.code === 'denied' ? 'login-denied' : e.code === 'wrong-client-id' ? 'wrong-client-id' : 'login-failed';
     app.authState = code;
     app.authMessage = e.message;
   }
-  startSource();
-  requestAnimationFrame(frame);
+  if (start) startSource();
+  return result;
 }
 
 boot();

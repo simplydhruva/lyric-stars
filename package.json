@@ -1,15 +1,67 @@
 {
   "name": "lyric-stars",
+  "productName": "Lyric Stars",
   "version": "0.1.0",
   "private": true,
   "description": "Spotify lyrics as a constellation.",
+  "author": "Lyric Stars",
   "type": "module",
+  "main": "electron/main.mjs",
   "scripts": {
     "start": "node server.js",
+    "desktop": "electron .",
     "test": "node --test test/",
-    "harness": "node tools/harness.mjs"
+    "harness": "node tools/harness.mjs",
+    "icons": "node tools/make-icon.mjs",
+    "dist": "electron-builder --win nsis"
   },
   "engines": {
     "node": ">=20"
+  },
+  "devDependencies": {
+    "electron": "45.2.1",
+    "electron-builder": "26.18.0"
+  },
+  "build": {
+    "appId": "com.lyricstars.app",
+    "productName": "Lyric Stars",
+    "copyright": "Personal, non-commercial use",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "package.json",
+      "server.js",
+      "web/**/*",
+      "electron/**/*",
+      "tools/smtc-probe.ps1"
+    ],
+    "asarUnpack": [
+      "tools/smtc-probe.ps1"
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "electron/icons/icon.png"
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "createStartMenuShortcut": true,
+      "createDesktopShortcut": true,
+      "shortcutName": "Lyric Stars",
+      "artifactName": "Lyric-Stars-Setup-${version}.exe",
+      "runAfterFinish": true
+    },
+    "electronLanguages": [
+      "en-US"
+    ]
   }
 }

@@ -17,13 +17,14 @@ function radios(name, options, value) {
 }
 
 export class SettingsPanel {
-  // host: { onChange(key), globalOffset(), nudgeGlobal(ms), cacheStats(), clearCache(), canDisconnect(), disconnect() }
+  // host: { onChange(key), globalOffset(), nudgeGlobal(ms), cacheStats(), clearCache(), canDisconnect(), disconnect(),
+  //         desktop?() -> { info, bridge } in the desktop app }
   constructor(el, host) {
     this.el = el;
     this.host = host;
     this.visible = false;
     el.addEventListener('change', (e) => this._changed(e.target));
-    el.addEventListener('input', (e) => e.target.type === 'color' && this._changed(e.target));
+    el.addEventListener('input', (e) => (e.target.type === 'color' || e.target.type === 'range') && this._changed(e.target));
     el.addEventListener('click', (e) => {
       const action = e.target.closest('[data-set]')?.dataset.set;
       if (action) this[action]();
@@ -59,6 +60,7 @@ export class SettingsPanel {
       <label class="check"><input type="checkbox" name="reduceMotion"${g('reduceMotion') ? ' checked' : ''}> Reduce motion (no drift, twinkle or pop)</label>
       <h3>Corner</h3>
       ${radios('cornerInfo', [['off', 'Nothing'], ['title', 'Song title'], ['art', 'Album art and title']], g('cornerInfo'))}
+      ${this._desktopHtml()}
       <h3>Global offset</h3>
       <p>For Bluetooth or speaker delay, on every song. <code>[</code> and <code>]</code> adjust just the current song.</p>
       <div class="row"><button type="button" data-set="later">Later</button><b data-part="offset">${formatOffset(this.host.globalOffset())}</b><button type="button" data-set="earlier">Earlier</button></div>
@@ -69,6 +71,59 @@ export class SettingsPanel {
         <div class="row"><button type="button" data-set="disconnect">Disconnect Spotify</button></div>
       </div>`;
     this._showCache();
+  }
+
+  _desktopHtml() {
+    const d = this.host.desktop?.();
+    if (!d) return '';
+    const { info } = d;
+    const o = info.overlay;
+    const pct = (v) => Math.round(v * 100);
+    const keys = (a) => esc(a.replace('Control', 'Ctrl'));
+    let update = '';
+    if (info.updatesEnabled) {
+      const u = info.update;
+      const status = u?.available
+        ? `Version ${esc(u.version)} is available.`
+        : u?.error
+          ? 'Could not check for updates.'
+          : u
+            ? 'You have the latest version.'
+            : '';
+      update = `<div class="row"><span>${status}</span>${
+        u?.available ? '<button type="button" data-set="openRelease">Download</button>' : '<button type="button" data-set="checkUpdates">Check now</button>'
+      }</div>`;
+    }
+    return `
+      <h3>Desktop app</h3>
+      ${radios('desk:style', [['window', 'Window'], ['fullscreen', 'Fullscreen'], ['overlay', 'Overlay']], info.style)}
+      <p>F fullscreen · O overlay · ${keys(info.shortcuts.toggleShow)} show or hide · ${keys(info.shortcuts.toggleClickThrough)} click-through</p>
+      <label class="field">Overlay opacity <input type="range" name="desk:opacity" min="30" max="100" step="5" value="${pct(o.opacity)}"> <b>${pct(o.opacity)}%</b></label>
+      <label class="field">Overlay background <input type="range" name="desk:backdrop" min="0" max="85" step="5" value="${pct(o.backdrop)}"> <b>${pct(o.backdrop)}%</b></label>
+      <label class="check"><input type="checkbox" name="desk:clickThrough"${o.clickThrough ? ' checked' : ''}> Click-through overlay (clicks go to the window below)</label>
+      <label class="check"><input type="checkbox" name="desk:startWithWindows"${info.startWithWindows ? ' checked' : ''}${info.canStartWithWindows ? '' : ' disabled'}> Start with Windows${info.canStartWithWindows ? '' : ' (installed app only)'}</label>
+      <label class="check"><input type="checkbox" name="desk:openToTray"${info.openToTray ? ' checked' : ''}> Open to the tray at startup</label>
+      <p>Version ${esc(info.version)}${info.secureTokens ? ' · Spotify login stored encrypted' : ''}</p>
+      ${update}`;
+  }
+
+  _desktopChanged(name, input) {
+    const { bridge } = this.host.desktop();
+    const v = input.type === 'checkbox' ? input.checked : input.value;
+    if (name === 'style') bridge.setStyle(v);
+    else if (name === 'opacity' || name === 'backdrop') {
+      input.nextElementSibling.textContent = `${v}%`;
+      bridge.setOverlay({ [name]: Number(v) / 100 });
+    } else if (name === 'clickThrough') bridge.setOverlay({ clickThrough: v });
+    else bridge.setOption(name, v);
+  }
+
+  async checkUpdates() {
+    await this.host.desktop().bridge.checkForUpdates();
+  }
+
+  openRelease() {
+    this.host.desktop().bridge.openRelease();
   }
 
   async _showCache() {
@@ -84,6 +139,7 @@ export class SettingsPanel {
   _changed(input) {
     const name = input.name;
     if (!name) return;
+    if (name.startsWith('desk:')) return this._desktopChanged(name.slice(5), input);
     const value = input.type === 'checkbox' ? input.checked : input.value;
     settings.set(name, value);
     this.host.onChange(name);

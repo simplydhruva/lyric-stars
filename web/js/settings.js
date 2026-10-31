@@ -1,5 +1,5 @@
-// Small persisted settings. Stored in localStorage for now; the desktop
-// shell moves tokens to secure storage in milestone 4.
+// Small persisted settings, in localStorage. Spotify tokens in the desktop app
+// go to Electron secure storage instead (auth.js).
 
 const memory = new Map();
 

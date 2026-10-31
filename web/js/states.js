@@ -15,6 +15,17 @@ export const STATES = {
     text: 'Lyric Stars needs to see what you are playing on Spotify.',
     button: { label: 'Connect Spotify', action: 'login' },
   },
+  'login-in-browser': {
+    card: true,
+    title: 'Finish logging in in your browser',
+    text: 'Your web browser opened Spotify. Log in there, then come back here.',
+    button: { label: 'Open the login page again', action: 'login' },
+  },
+  'login-handed-off': {
+    card: true,
+    title: 'You’re logged in',
+    text: 'Go back to the Lyric Stars app. You can close this tab.',
+  },
   'login-failed': {
     card: true,
     title: 'Login did not work',

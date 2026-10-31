@@ -219,7 +219,7 @@ body.controls-hidden #chips .subtle { opacity: 0; pointer-events: none; }
 .settings .seg input:focus-visible + span { outline: 2px solid var(--gold); outline-offset: 1px; }
 .settings .check, .settings .field { display: flex; align-items: center; gap: 8px; margin: 6px 0; cursor: pointer; }
 .settings .field[hidden] { display: none; }
-.settings input[type=checkbox] { accent-color: var(--gold); }
+.settings input[type=checkbox], .settings input[type=range] { accent-color: var(--gold); }
 .settings input[type=color] { width: 40px; height: 24px; padding: 0; border: 1px solid var(--line); background: none; }
 .settings select { font: inherit; color: var(--text); background: #1a160e; border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; }
 .settings .row { align-items: center; }
@@ -241,3 +241,38 @@ body.controls-hidden #chips .subtle { opacity: 0; pointer-events: none; }
 #corner[hidden] { display: none; }
 #corner img { width: 40px; height: 40px; border-radius: 4px; opacity: 0.8; flex: none; }
 #corner span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---- desktop overlay style: transparent, frameless, always on top ---- */
+html.overlay, html.overlay body { background: transparent; }
+html.overlay body {
+  background: rgba(0, 0, 0, var(--backdrop, 0.35));
+  border-radius: 14px;
+  transition: background 300ms ease;
+}
+html.overlay #controls { bottom: 10px; font-size: 12px; }
+html.overlay #controls button { padding: 4px 11px; }
+html.overlay .panel { top: 34px; max-height: calc(100vh - 44px); }
+#grip {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 26px;
+  -webkit-app-region: drag;
+  cursor: move;
+  transition: opacity 400ms ease;
+}
+#grip::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 9px;
+  width: 44px;
+  height: 4px;
+  margin-left: -22px;
+  border-radius: 2px;
+  background: var(--gold-dim);
+}
+body.controls-hidden #grip { opacity: 0; }
+/* Click-through: the mouse goes to the window below, so nothing here is clickable. */
+html.click-through #grip, html.click-through #controls { display: none; }

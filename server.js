@@ -1,5 +1,6 @@
 // Tiny local server: serves web/, stores the lyric cache on disk, and runs the
 // Windows media-session probe. Listens on 127.0.0.1 only.
+// `npm start` runs it directly; the desktop app imports startServer().
 import http from 'node:http';
 import fs from 'node:fs/promises';
 import { createReadStream } from 'node:fs';
@@ -11,15 +12,19 @@ import { spawn } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 
 const HOST = '127.0.0.1';
-const PORT = Number(process.env.PORT) || 5173;
+export const DEFAULT_PORT = 5173; // Spotify's redirect address is fixed to this port
 const ROOT = path.dirname(fileURLToPath(import.meta.url));
 const WEB = path.join(ROOT, 'web');
-const DATA_DIR =
+export const DEFAULT_DATA_DIR =
   process.env.LYRICSTARS_DATA ||
   path.join(process.env.APPDATA || path.join(os.homedir(), '.config'), 'LyricStars');
-const CACHE_DIR = path.join(DATA_DIR, 'cache');
-// User timings are kept apart so clearing the lyric cache never loses them.
-const TIMINGS_DIR = path.join(DATA_DIR, 'timings');
+// Set by startServer().
+let PORT = DEFAULT_PORT;
+let CACHE_DIR;
+let TIMINGS_DIR; // user timings are kept apart so clearing the lyric cache never loses them
+let PROBE_SCRIPT = path.join(ROOT, 'tools', 'smtc-probe.ps1');
+let ALLOWED_HOSTS;
+let onLoginHandoff = null; // set by the desktop app
 const MAX_BODY = 2 * 1024 * 1024;
 
 const TYPES = {
@@ -40,8 +45,6 @@ const CSP = [
   "script-src 'self'",
   "frame-ancestors 'none'",
 ].join('; ');
-
-const ALLOWED_HOSTS = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`]);
 
 function send(res, status, body, headers = {}) {
   const isJson = body !== undefined && typeof body !== 'string';
@@ -122,8 +125,7 @@ const probe = { child: null, latest: null, lastRequest: 0, error: null };
 function ensureProbe() {
   probe.lastRequest = Date.now();
   if (probe.child || process.platform !== 'win32') return;
-  const script = path.join(ROOT, 'tools', 'smtc-probe.ps1');
-  const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script], {
+  const child = spawn('powershell.exe', ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', PROBE_SCRIPT], {
     windowsHide: true,
     stdio: ['ignore', 'pipe', 'pipe'],
   });
@@ -173,7 +175,7 @@ async function serveStatic(req, res, pathname) {
 
 // ---- router -------------------------------------------------------------
 
-const server = http.createServer(async (req, res) => {
+async function handle(req, res) {
   try {
     const host = req.headers.host || '';
     // Refuse other hostnames (protects against DNS rebinding).
@@ -198,6 +200,19 @@ const server = http.createServer(async (req, res) => {
         return send(res, 204, '');
       }
       if (p === '/api/cache-stats') return send(res, 200, await cacheStats());
+      if (p === '/api/health') return send(res, 200, { app: 'lyric-stars' });
+      if (p === '/api/login-handoff' && req.method === 'POST') {
+        // The desktop app opens Spotify login in the normal browser; the tab Spotify
+        // returns to posts the code here so the app can finish the login itself.
+        // Useless without the app's own PKCE verifier, which never leaves the app.
+        if (origin !== `http://${HOST}:${PORT}`) return send(res, 403, 'forbidden origin');
+        if (!onLoginHandoff) return send(res, 404, { ok: false });
+        const body = JSON.parse(await readBody(req));
+        const pick = (k) => (typeof body[k] === 'string' && body[k].length <= 2048 ? body[k] : undefined);
+        const params = { code: pick('code'), state: pick('state'), error: pick('error') };
+        if (!params.state?.startsWith('d.')) return send(res, 400, { ok: false });
+        return send(res, 200, { ok: onLoginHandoff(params) === true });
+      }
       if (p === '/api/media-session') {
         if (process.platform !== 'win32') return send(res, 501, { ok: false, error: 'Windows only' });
         ensureProbe();
@@ -211,20 +226,50 @@ const server = http.createServer(async (req, res) => {
     console.error(e);
     if (!res.headersSent) send(res, 500, 'server error');
   }
-});
+}
 
-server.on('error', (e) => {
-  if (e.code === 'EADDRINUSE') {
-    console.error(`Port ${PORT} is already in use. Is Lyric Stars already running?`);
-    process.exit(1);
+export function stopProbe() {
+  probe.child?.kill();
+  probe.child = null;
+}
+
+// Resolves with the listening server; rejects with code EADDRINUSE if the port is taken.
+export function startServer({ port = DEFAULT_PORT, dataDir = DEFAULT_DATA_DIR, probeScript, onLoginHandoff: handoff } = {}) {
+  PORT = port;
+  onLoginHandoff = handoff || null;
+  CACHE_DIR = path.join(dataDir, 'cache');
+  TIMINGS_DIR = path.join(dataDir, 'timings');
+  if (probeScript) PROBE_SCRIPT = probeScript;
+  ALLOWED_HOSTS = new Set([`127.0.0.1:${PORT}`, `localhost:${PORT}`]);
+  const server = http.createServer(handle);
+  return new Promise((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(PORT, HOST, () => resolve(server));
+  });
+}
+
+// True when another copy of Lyric Stars already serves the port.
+export async function isOurServer(port = DEFAULT_PORT) {
+  try {
+    const res = await fetch(`http://${HOST}:${port}/api/health`, { signal: AbortSignal.timeout(1500) });
+    return (await res.json()).app === 'lyric-stars';
+  } catch {
+    return false;
   }
-  throw e;
-});
+}
 
-server.listen(PORT, HOST, () => {
-  console.log(`Lyric Stars running at http://${HOST}:${PORT}/`);
-  console.log(`Cache folder: ${CACHE_DIR}`);
-});
-
-process.on('exit', () => probe.child?.kill());
-process.on('SIGINT', () => process.exit(0));
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  const port = Number(process.env.PORT) || DEFAULT_PORT;
+  startServer({ port }).then(
+    () => {
+      console.log(`Lyric Stars running at http://${HOST}:${port}/`);
+      console.log(`Cache folder: ${CACHE_DIR}`);
+    },
+    (e) => {
+      console.error(e.code === 'EADDRINUSE' ? `Port ${port} is already in use. Is Lyric Stars already running?` : e);
+      process.exit(1);
+    }
+  );
+  process.on('exit', stopProbe);
+  process.on('SIGINT', () => process.exit(0));
+}
