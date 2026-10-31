@@ -41,6 +41,7 @@ export class DisplayLatency {
     this.intervals = [];
     this.last = 0;
     this.ms = 16 * 1.5;
+    this.refreshMs = 1000 / 60;
   }
 
   tick(now) {
@@ -52,12 +53,20 @@ export class DisplayLatency {
         if (this.intervals.length > 120) this.intervals.shift();
         if (this.intervals.length % 30 === 0) {
           const sorted = [...this.intervals].sort((a, b) => a - b);
-          this.ms = sorted[sorted.length >> 1] * 1.5;
+          this.refreshMs = sorted[sorted.length >> 1];
+          this.ms = this.refreshMs * 1.5;
         }
       }
     }
     this.last = now;
   }
+}
+
+// Draw every Nth refresh so fast screens paint about 60 times a second at even spacing:
+// 60-100 Hz every frame, 120/144/165 Hz every 2nd, 240 Hz every 4th.
+export function frameStride(refreshMs) {
+  const hz = 1000 / refreshMs;
+  return Math.max(1, Math.floor(hz / 55));
 }
 
 export function formatOffset(ms) {

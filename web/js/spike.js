@@ -183,6 +183,17 @@ export class SpikePanel {
     this.paint();
   }
 
+  async copyReport() {
+    try {
+      await navigator.clipboard.writeText(this.app.makeReport());
+      this.flash = 'Report copied. Paste it in a message to whoever sent you the app.';
+    } catch {
+      console.log(this.app.makeReport());
+      this.flash = 'Clipboard blocked; report printed to the console.';
+    }
+    this.paint();
+  }
+
   async copyResults() {
     const data = {
       at: new Date().toISOString(),
@@ -224,6 +235,7 @@ export class SpikePanel {
     this.el.innerHTML = `
       <h2>Now playing</h2>
       <div data-part="now"></div>
+      <div class="row"><button data-spike="copyReport" title="Copies app state for a bug report. No login details are included.">Copy report</button></div>
       <h2>Spotify endpoint access</h2>
       <div data-part="endpoint"></div>
       <div class="row"><button data-spike="checkEndpoint">Check now</button></div>
@@ -311,7 +323,7 @@ export class SpikePanel {
 }
 
 // "Automatic · Edge on this PC", "Spotify account", …
-function sourceLabel(app) {
+export function sourceLabel(app) {
   const src = app.source;
   if (!src) return 'nothing yet';
   const pb = app.playback;

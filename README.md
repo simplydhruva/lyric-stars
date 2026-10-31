@@ -24,7 +24,7 @@ Open http://127.0.0.1:5173/ (localhost redirects there, because Spotify only acc
 
 ## Desktop app
 
-Friends: see [docs/INSTALL.md](docs/INSTALL.md).
+Friends: see [docs/INSTALL.md](docs/INSTALL.md) and [docs/FRIEND-TEST.md](docs/FRIEND-TEST.md). Releasing: [docs/RELEASE-CHECKLIST.md](docs/RELEASE-CHECKLIST.md).
 
 ```
 npm install      # Electron and electron-builder (dev only)
@@ -100,6 +100,9 @@ electron/secrets.mjs      encrypted token store
 electron/updates.mjs      GitHub release check (pure, tested)
 electron/preload.cjs      the window.lyricStars bridge
 docs/INSTALL.md           friend install guide (SmartScreen, keys, releasing)
+docs/FRIEND-TEST.md       what friends try, and how to send a report
+docs/RELEASE-CHECKLIST.md everything to check before a release
+web/js/report.js          Diagnostics → Copy report (local only, credentials removed)
 native/media-helper.cs    Windows media-session helper (npm run helper → native/bin/, not committed)
 tools/smtc-probe.ps1      PowerShell fallback for the helper
 web/config.js             BUILT_IN_CLIENT_ID and UPDATE_REPO for friend builds

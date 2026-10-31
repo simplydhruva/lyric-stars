@@ -43,6 +43,7 @@ const DEFAULTS = {
   albumColors: false, // tint each song's sky from its album art
   font: 'segoe', // a key of FONTS in theme.js
   backgroundStars: true,
+  fullFrameRate: false, // draw on every refresh of a 120/144 Hz screen instead of about 60 times a second
   get reduceMotion() {
     return prefersReducedMotion(); // follows Windows "Animation effects" until set here
   },

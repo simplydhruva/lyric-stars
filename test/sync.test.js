@@ -25,3 +25,9 @@ test('display latency follows the refresh interval', () => {
   d.tick(60 * (1000 / 120) + 5000); // a stall is ignored
   assert.ok(Math.abs(d.ms - 12.5) < 0.1);
 });
+
+test('frameStride: about 60 paints a second at even spacing', async () => {
+  const { frameStride } = await import('../web/js/sync.js');
+  const s = (hz) => frameStride(1000 / hz);
+  assert.deepEqual([s(59.94), s(60), s(75), s(100), s(119.9), s(144), s(165), s(240)], [1, 1, 1, 1, 2, 2, 3, 4]);
+});

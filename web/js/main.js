@@ -1,6 +1,6 @@
 // App controller: wires sources -> clock -> lyrics -> renderer, and owns UI state.
 import * as auth from './auth.js';
-import { settings } from './settings.js';
+import { settings, store } from './settings.js';
 import { PlaybackClock } from './sources/clock.js';
 import { SpotifySource } from './sources/spotify.js';
 import { MediaSessionSource } from './sources/mediaSession.js';
@@ -11,7 +11,8 @@ import * as cache from './cache.js';
 import { buildTimeline, timelineKind } from './timing.js';
 import { Renderer } from './renderer.js';
 import { STATES, fill } from './states.js';
-import { SpikePanel } from './spike.js';
+import { SpikePanel, sourceLabel } from './spike.js';
+import { buildReport, formatReport, watchErrors, recordError } from './report.js';
 import { SyncEditor } from './editor.js';
 import * as corrections from './corrections.js';
 import * as sync from './sync.js';
@@ -43,10 +44,32 @@ export const app = {
   desktop: desktop?.info() || null, // { style, overlay, update, ... } from the desktop shell
 };
 
+watchErrors();
 const renderer = new Renderer($('sky'));
 const frameStats = (app.frameStats = new FrameStats());
 const spike = new SpikePanel($('spike'), app);
 const latency = new sync.DisplayLatency();
+
+// Diagnostics → Copy report.
+app.makeReport = () =>
+  formatReport(
+    buildReport({
+      app,
+      env: {
+        userAgent: navigator.userAgent,
+        language: navigator.language,
+        online: navigator.onLine,
+        screen: `${screen.width}×${screen.height} @${devicePixelRatio}x`,
+        window: `${innerWidth}×${innerHeight}`,
+      },
+      settings: store.get('ls.settings') || {},
+      offsets: { global: sync.globalOffset(), song: sync.songOffset(app.track?.key), display: Math.round(latency.ms) },
+      sourceLabel: sourceLabel(app),
+      loggedIn: auth.isLoggedIn(),
+      builtInClientId: auth.hasBuiltInClientId(),
+      timingKind: app.timeline ? timelineKind(app.timeline) : null,
+    })
+  );
 
 // Lyric time at a moment: where the song is, shifted by the offsets. Positive offsets show lyrics earlier.
 function lyricTime(t) {
@@ -155,7 +178,8 @@ function onSettingChange(key) {
   } else if (key === 'albumColors') {
     loadPalette(app.track);
     applyVisuals();
-  } else applyVisuals();
+  } else if (key === 'fullFrameRate') fullFrameRate = settings.get('fullFrameRate');
+  else applyVisuals();
 }
 
 // ---- sources -------------------------------------------------------------
@@ -202,6 +226,7 @@ function setAuthState(state, message = '') {
 
 function onProblem(problem) {
   const prev = app.problem?.code;
+  if (problem && problem.code !== prev) recordError(`source: ${problem.code}${problem.message ? ` (${problem.message})` : ''}`);
   app.problem = problem;
   if (problem?.code === 'rate-limited') problem.until = Date.now() + problem.retryInMs;
   if (problem?.code === 'expired') auth.logout();
@@ -258,6 +283,7 @@ async function loadLyrics(track, { force = false } = {}) {
   } catch (e) {
     if (seq !== app.loadSeq) return;
     if (!(e instanceof LyricsError)) throw e;
+    recordError(`lyrics: ${e.kind} (${e.message})`);
     if (cached) return applyLyrics(track, cached.entry, e.kind === 'offline');
     app.lyrics = { status: e.kind === 'offline' ? 'lyrics-offline' : 'lyrics-service-down' };
     app.retryTimer = setTimeout(() => app.track?.key === track.key && loadLyrics(track), 15_000);
@@ -568,10 +594,13 @@ window.addEventListener('pointerdown', showControls);
 
 // ---- frame loop --------------------------------------------------------------
 
+let frameCount = 0;
+let fullFrameRate = settings.get('fullFrameRate');
 function frame(now) {
   latency.tick(now);
+  const stride = fullFrameRate ? 1 : sync.frameStride(latency.refreshMs);
   const t0 = performance.now();
-  if (renderer.draw(drawPosition(), { mode: app.mode, playing: app.clock.playing, now })) frameStats.add(now, performance.now() - t0);
+  if (frameCount++ % stride === 0 && renderer.draw(drawPosition(), { mode: app.mode, playing: app.clock.playing, now })) frameStats.add(now, performance.now() - t0);
   spike.frame(app.clock.position());
   editor.frame();
   requestAnimationFrame(frame);

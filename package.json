@@ -1,7 +1,7 @@
 {
   "name": "lyric-stars",
   "productName": "Lyric Stars",
-  "version": "0.1.0",
+  "version": "0.9.0",
   "private": true,
   "description": "Spotify lyrics as a constellation.",
   "author": "Lyric Stars",

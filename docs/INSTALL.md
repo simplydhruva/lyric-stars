@@ -114,4 +114,5 @@ Settings → Apps → Installed apps → Lyric Stars → Uninstall. To also remo
    (`owner/repo`) in `web/config.js`. Bump `version` in `package.json`.
 2. Run `npm install` and then `npm run dist`. The installer appears in `dist/Lyric-Stars-Setup-<version>.exe`.
 3. On GitHub, create a release tagged `v<version>` and attach the `.exe`. Don't mark it as a pre-release, because the update check skips those.
-4. Add your friends' Spotify emails under User Management in the Spotify developer dashboard. Development mode allows 25 users.
+4. Add your friends' Spotify emails under User Management in the Spotify developer dashboard. Check the dashboard for the current user limit; it has changed over time.
+5. Before each release, go through [RELEASE-CHECKLIST.md](RELEASE-CHECKLIST.md). Send friends [FRIEND-TEST.md](FRIEND-TEST.md) along with this guide. When something goes wrong, they press D, click **Copy report**, and paste the result to you.
