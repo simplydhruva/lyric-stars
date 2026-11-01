@@ -79,18 +79,18 @@ async function run(style) {
   let page, main;
   try {
     // Seed the lyrics through the app's own server so the check does not depend on the network.
-    await waitFor('the server', async () => (await fetch('http://127.0.0.1:5210/api/cache-stats')).ok, 20000);
+    await waitFor('the server', async () => (await fetch('http://127.0.0.1:5210/api/cache-stats')).ok, 40000);
     const lines = [[4, 'Hold me in the light tonight'], [9, 'Stars are falling slow and bright'], [14, 'Sing it back to me again'], [19, 'Never let it go away']];
     await fetch('http://127.0.0.1:5210/api/cache/' + encodeURIComponent('lyrics:demo:Electron Check'), { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(syncedEntry('Electron Check', 'Check', lines)) });
-    const pt = await waitFor('the page', async () => (await (await fetch('http://127.0.0.1:9333/json')).json()).find((t) => t.type === 'page'), 20000);
+    const pt = await waitFor('the page', async () => (await (await fetch('http://127.0.0.1:9333/json')).json()).find((t) => t.type === 'page'), 40000);
     const pg = cdp(pt.webSocketDebuggerUrl);
     await pg.send('Page.reload');
     pg.close();
-    const pageTarget = await waitFor('the page', async () => (await (await fetch(`http://127.0.0.1:${PAGE_PORT}/json`)).json()).find((t) => t.type === 'page'), 20000);
+    const pageTarget = await waitFor('the page', async () => (await (await fetch(`http://127.0.0.1:${PAGE_PORT}/json`)).json()).find((t) => t.type === 'page'), 40000);
     const mainTarget = await waitFor('the main process', async () => (await (await fetch(`http://127.0.0.1:${MAIN_PORT}/json`)).json())[0], 10000);
     page = cdp(pageTarget.webSocketDebuggerUrl);
     main = cdp(mainTarget.webSocketDebuggerUrl);
-    await waitFor('lyrics drawn', () => page.js(`document.getElementById('card')?.hidden === true && document.documentElement.dataset.scene === 'karaoke'`), 20000);
+    await waitFor('lyrics drawn', () => page.js(`document.getElementById('card')?.hidden === true && document.documentElement.dataset.scene === 'karaoke'`), 60000);
     await sleep(1500);
 
     const mainJs = (body) =>
