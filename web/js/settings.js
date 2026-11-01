@@ -58,6 +58,9 @@ const DEFAULTS = {
   emotion: true, // love, fire, night, rain and sun words get a small coloured glow (six scenes)
   emojis: true, // kinetic: an emoji appears next to words like love, fire and night (at most 2 a line)
   filmLook: true, // polaroid: grain, a faded warm film look on the photos
+  reelBackground: 'crisp', // reel: 'crisp' (the album cover, dimmed) | 'blur' (soft blur) | 'off' (the black sky)
+  reelIntensity: 'normal', // reel: 'calm' | 'normal' | 'wild' (shake, RGB split, flicker, distortion)
+  reelFonts: 'random', // reel: 'random' (ten bundled display fonts, a few per line) | 'single' (Anton only); T re-rolls the fonts of the current line
   polaroidFlash: false, // polaroid: a quick camera flash now and then (at most one line in four)
   songMap: true, // constellation: when the last line is done, every star fades together into one song map
   fullFrameRate: false, // draw on every refresh of a 120/144 Hz screen instead of about 60 times a second

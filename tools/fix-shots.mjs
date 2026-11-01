@@ -1,6 +1,6 @@
 // Screenshots of one scene at chosen moments, with chosen settings. Used to look at a change by eye.
 //   node --experimental-websocket tools/fix-shots.mjs OUT_DIR --scene kinetic --at 4.2,9.2 [--size 1920x1080@1]
-//        [--set '{"emojis":true}'] [--lyrics file.json] [--name label] [--hold 900]
+//        [--set '{"emojis":true}'] [--lyrics file.json] [--name label] [--hold 900] [--cover bright|dark|red|blue|busy]
 // lyrics file: [[seconds, "text"], ...]. Prints one line per screenshot.
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
@@ -35,14 +35,15 @@ try {
   await s.putCache(`lyrics:demo:${SONG.title}`, syncedEntry(SONG.title, SONG.artist, LYRICS));
   await s.send('Emulation.setDeviceMetricsOverride', { width: Number(sw), height: Number(sh), deviceScaleFactor: Number(sd || 1), mobile: false });
   for (const at of ats) {
-    await s.goto(`${s.base}/?${new URLSearchParams({ demo: '', ...SONG, duration: '60', start: String(at), paused: '', seed: '7', scene })}`);
+    await s.goto(`${s.base}/?${new URLSearchParams({ demo: '', ...SONG, duration: '60', start: String(at), paused: '', seed: '7', scene, ...(opt('cover') ? { demoCover: opt('cover') } : {}) })}`);
     await sleep(400);
     await s.js(`(() => { const all = JSON.parse(localStorage.getItem('ls.settings') || '{}'); Object.assign(all, ${JSON.stringify(set)}); localStorage.setItem('ls.settings', JSON.stringify(all)); })()`);
-    await s.goto(`${s.base}/?${new URLSearchParams({ demo: '', ...SONG, duration: '60', start: String(at), paused: '', seed: '7', scene })}`);
+    await s.goto(`${s.base}/?${new URLSearchParams({ demo: '', ...SONG, duration: '60', start: String(at), paused: '', seed: '7', scene, ...(opt('cover') ? { demoCover: opt('cover') } : {}) })}`);
     await waitFor('lyrics', () => s.js(`document.getElementById('card').hidden && document.documentElement.dataset.scene === '${scene}'`), 10000);
     await sleep(hold);
-    const shot = await s.send('Page.captureScreenshot', { format: 'png' });
-    const file = path.join(out, `${label}-${String(at).replace('.', '_')}s.png`);
+    const jpeg = opt('format', 'png') === 'jpeg'; // film grain makes a PNG of a big picture very slow to encode
+    const shot = await s.send('Page.captureScreenshot', jpeg ? { format: 'jpeg', quality: 92 } : { format: 'png' });
+    const file = path.join(out, `${label}-${String(at).replace('.', '_')}s.${jpeg ? 'jpg' : 'png'}`);
     writeFileSync(file, Buffer.from(shot.result.data, 'base64'));
     console.log('saved', file);
   }

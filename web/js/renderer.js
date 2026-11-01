@@ -147,6 +147,9 @@ export class Renderer {
     f.emojis = this.opts.emojis !== false;
     f.film = this.opts.filmLook !== false;
     f.polaroidFlash = this.opts.polaroidFlash === true;
+    f.reelBackground = this.opts.reelBackground || 'crisp';
+    f.reelIntensity = this.opts.reelIntensity || 'normal';
+    f.reelFonts = this.opts.reelFonts || 'random';
     f.beat = beat;
     f.glow = Math.max(0, Math.min(1, (this.opts.glow ?? 25) / 100));
     this._scene(this.sceneId).draw(f);

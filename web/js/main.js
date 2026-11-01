@@ -34,6 +34,7 @@ import { History, songMapThumb, MIN_PLAY_MS } from './history.js';
 import { HistoryPanel } from './history-panel.js';
 import { savePicture, recordClip, canRecord, CLIP_SECONDS } from './export.js';
 import { translateLines, looksEnglish } from './translate.js';
+import { requestFontShuffle } from './scenes/reel.js';
 
 const $ = (id) => document.getElementById(id);
 // The desktop app's bridge (electron/preload.cjs), or null in a normal browser.
@@ -232,6 +233,9 @@ function applyVisuals() {
     emojis: g('emojis'),
     filmLook: g('filmLook'),
     polaroidFlash: g('polaroidFlash'),
+    reelBackground: g('reelBackground'),
+    reelIntensity: g('reelIntensity'),
+    reelFonts: g('reelFonts'),
     beatPulse: g('beatPulse'),
     palette: app.palette,
     art: app.track?.artLarge || app.track?.art || null,
@@ -315,7 +319,13 @@ function updateCorner() {
   if (showArt && art.getAttribute('src') !== t.art) art.src = t.art;
 }
 
+// T: re-roll the Reel scene's fonts for the line on screen (does nothing in other scenes).
+function shuffleReelFonts() {
+  if (renderer.sceneId === 'reel') requestFontShuffle();
+}
+
 function onSettingChange(key) {
+  if (key.startsWith('reel')) applyVisuals();
   if (key === 'source') startSource();
   else if (key === 'mode') {
     app.mode = settings.get('mode');
@@ -865,6 +875,7 @@ window.addEventListener('keydown', (e) => {
   else if (k === 'f') toggleFullscreen();
   else if (k === 'm') toggleMode();
   else if (k === 'v') cycleScene();
+  else if (k === 't') shuffleReelFonts();
   else if (k === 'd') toggleSpike();
   else if (k === 'e') toggleEditor();
   else if (k === 's') settingsPanel.toggle();

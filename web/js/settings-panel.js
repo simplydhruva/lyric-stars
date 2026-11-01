@@ -82,6 +82,12 @@ export class SettingsPanel {
       <label class="check"><input type="checkbox" name="emojis"${g('emojis') ? ' checked' : ''}> Emojis next to words like love and fire (Kinetic scene)</label>
       <label class="check"><input type="checkbox" name="filmLook"${g('filmLook') ? ' checked' : ''}> Film look: grain and faded colour on the photos (Polaroid scene)</label>
       <label class="check"><input type="checkbox" name="polaroidFlash"${g('polaroidFlash') ? ' checked' : ''}> Camera flash now and then (Polaroid scene)</label>
+      <div class="field-label">Reel background <span class="hint">(Reel scene)</span></div>
+      ${radios('reelBackground', [['crisp', 'Crisp dim (album cover)'], ['blur', 'Soft blur'], ['off', 'Off (black sky)']], g('reelBackground'))}
+      <div class="field-label">Reel intensity <span class="hint">(shake, RGB split, flicker, distortion)</span></div>
+      ${radios('reelIntensity', [['calm', 'Calm'], ['normal', 'Normal'], ['wild', 'Wild']], g('reelIntensity'))}
+      <div class="field-label">Reel fonts <span class="hint">(T re-rolls the current line)</span></div>
+      ${radios('reelFonts', [['random', 'Random'], ['single', 'Single font (Anton)']], g('reelFonts'))}
       <label class="check"><input type="checkbox" name="emotion"${g('emotion') ? ' checked' : ''}> Glow on words like love, fire and night (some scenes)</label>
 ${this.host.desktop ? `      <label class="check"><input type="checkbox" name="beatPulse"${g('beatPulse') ? ' checked' : ''}> Pulse to the beat (listens to the sound your PC is playing)</label>
       <p>${esc(this.host.beatStatus?.() || '')}Windows only. Lyric Stars measures the loudness of your PC's audio output to find the beat; it records nothing and sends nothing. Windows may show a screen-capture indicator while this is on.</p>
