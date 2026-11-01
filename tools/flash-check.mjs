@@ -39,7 +39,9 @@ try {
       await sleep(400);
       const after2 = await print();
       check('the flash is showing 200 ms after the key', during !== after1);
-      check('the flash is gone after a second (picture is steady)', after1 === after2);
+      // Pixel's clouds, twinkles and pan drift by design (and have their own sky), so only its reduce-motion run can be steady.
+      if (scene === 'pixel' && !reduce) console.log('  skip the picture is steady (Pixel drifts by design; see the reduce motion run)');
+      else check('the flash is gone after a second (picture is steady)', after1 === after2);
       await s.key('[', 'BracketLeft');
       await sleep(200);
       const during2 = await print();

@@ -357,3 +357,19 @@ html[data-scene="paper"] #caption .roman, html[data-scene="paper"] #caption .tra
 .hist-text { display: flex; flex-direction: column; min-width: 0; }
 .hist-text b, .hist-text span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hist-when { font-size: 12px; color: var(--muted); }
+
+/* The two pixel fonts of the Pixel scene (SIL Open Font License 1.1), bundled so they need no network. Licences: web/fonts/LICENSE-pressstart2p.txt, LICENSE-silkscreen.txt */
+@font-face {
+  font-family: "Press Start 2P";
+  src: url("/fonts/PressStart2P.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Silkscreen";
+  src: url("/fonts/Silkscreen.ttf") format("truetype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}

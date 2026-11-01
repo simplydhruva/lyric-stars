@@ -236,6 +236,16 @@ function applyVisuals() {
     reelBackground: g('reelBackground'),
     reelIntensity: g('reelIntensity'),
     reelFonts: g('reelFonts'),
+    pixelScreen: g('pixelScreen'),
+    pixelHud: g('pixelHud'),
+    pixelCrt: g('pixelCrt'),
+    pixelPalette: g('pixelPalette'),
+    pixelAlbum: g('pixelAlbum'),
+    pixelFont: g('pixelFont'),
+    pixelSize: g('pixelSize'),
+    pixelSpeed: g('pixelSpeed'),
+    pixelSound: g('pixelSound'),
+    track: app.track ? { title: app.track.title, artist: app.track.artist, durationMs: app.track.durationMs ?? app.track.duration ?? 0 } : null,
     beatPulse: g('beatPulse'),
     palette: app.palette,
     art: app.track?.artLarge || app.track?.art || null,
@@ -325,7 +335,7 @@ function shuffleReelFonts() {
 }
 
 function onSettingChange(key) {
-  if (key.startsWith('reel')) applyVisuals();
+  if (key.startsWith('reel') || key.startsWith('pixel')) applyVisuals();
   if (key === 'source') startSource();
   else if (key === 'mode') {
     app.mode = settings.get('mode');

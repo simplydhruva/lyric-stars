@@ -97,9 +97,9 @@ export class Renderer {
     this.sceneId = SCENE_IDS.includes(scene) ? scene : SCENE_IDS[0];
     const flashOn = flashing(now, this.flashState?.at);
     const frameKey = `${flashOn ? 'f' + Math.round(now) : ''}|${Math.round(pos)}|${mode}|${quiet}|${this.sceneId}|${displayMode}|${w}x${h}@${dpr}`;
-    const skyOn = skyMode !== 'off' && scene !== 'paper';
+    const skyOn = skyMode !== 'off' && scene !== 'paper' && scene !== 'pixel';
     if (!resized && !playing && frameKey === this.lastFrameKey) {
-      const moving = skyOn && this.sky.animating(skyMode);
+      const moving = (skyOn && this.sky.animating(skyMode)) || (this.sceneId === 'pixel' && !reduceMotion);
       if (!moving || now - this.lastDrawAt < IDLE_FRAME_MS) return false;
     }
     this.lastFrameKey = frameKey;
@@ -150,6 +150,16 @@ export class Renderer {
     f.reelBackground = this.opts.reelBackground || 'crisp';
     f.reelIntensity = this.opts.reelIntensity || 'normal';
     f.reelFonts = this.opts.reelFonts || 'random';
+    f.pixelScreen = this.opts.pixelScreen || 'fill';
+    f.pixelHud = this.opts.pixelHud !== false;
+    f.pixelCrt = this.opts.pixelCrt !== false;
+    f.pixelPalette = this.opts.pixelPalette || 'dreamy';
+    f.pixelAlbum = this.opts.pixelAlbum === true;
+    f.pixelFont = this.opts.pixelFont || 'press';
+    f.pixelSize = this.opts.pixelSize || 'normal';
+    f.pixelSpeed = this.opts.pixelSpeed || 'normal';
+    f.pixelSound = this.opts.pixelSound === true;
+    f.track = this.opts.track || null;
     f.beat = beat;
     f.glow = Math.max(0, Math.min(1, (this.opts.glow ?? 25) / 100));
     this._scene(this.sceneId).draw(f);

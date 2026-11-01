@@ -60,6 +60,15 @@ const DEFAULTS = {
   filmLook: true, // polaroid: grain, a faded warm film look on the photos
   reelBackground: 'crisp', // reel: 'crisp' (the album cover, dimmed) | 'blur' (soft blur) | 'off' (the black sky)
   reelIntensity: 'normal', // reel: 'calm' | 'normal' | 'wild' (shake, RGB split, flicker, distortion)
+  pixelScreen: 'fill', // pixel: 'fill' (the whole window) | 'portrait' (a 9:16 screen in the middle)
+  pixelHud: true, // pixel: battery, signal, menu labels, progress bar
+  pixelCrt: true, // pixel: faint scanlines and vignette
+  pixelPalette: 'dreamy', // pixel: 'dreamy' | 'sunset' | 'green'
+  pixelAlbum: false, // pixel: tint the accent with the album cover's colour
+  pixelFont: 'press', // pixel: 'press' (Press Start 2P) | 'silk' (Silkscreen)
+  pixelSize: 'normal', // pixel: pixel size: 'fine' | 'normal' | 'chunky'
+  pixelSpeed: 'normal', // pixel: animation speed: 'slow' | 'normal' | 'fast'
+  pixelSound: false, // pixel: a tiny blip when the line changes
   reelFonts: 'random', // reel: 'random' (ten bundled display fonts, a few per line) | 'single' (Anton only); T re-rolls the fonts of the current line
   polaroidFlash: false, // polaroid: a quick camera flash now and then (at most one line in four)
   songMap: true, // constellation: when the last line is done, every star fades together into one song map

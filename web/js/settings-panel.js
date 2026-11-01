@@ -88,6 +88,20 @@ export class SettingsPanel {
       ${radios('reelIntensity', [['calm', 'Calm'], ['normal', 'Normal'], ['wild', 'Wild']], g('reelIntensity'))}
       <div class="field-label">Reel fonts <span class="hint">(T re-rolls the current line)</span></div>
       ${radios('reelFonts', [['random', 'Random'], ['single', 'Single font (Anton)']], g('reelFonts'))}
+      <div class="field-label">Pixel screen <span class="hint">(Pixel scene)</span></div>
+      ${radios('pixelScreen', [['fill', 'Fill the window'], ['portrait', 'Portrait 9:16']], g('pixelScreen'))}
+      <div class="field-label">Pixel palette</div>
+      ${radios('pixelPalette', [['dreamy', 'Dreamy'], ['sunset', 'Sunset'], ['green', 'Classic green']], g('pixelPalette'))}
+      <div class="field-label">Pixel font</div>
+      ${radios('pixelFont', [['press', 'Press Start 2P'], ['silk', 'Silkscreen']], g('pixelFont'))}
+      <div class="field-label">Pixel size</div>
+      ${radios('pixelSize', [['fine', 'Fine'], ['normal', 'Normal'], ['chunky', 'Chunky']], g('pixelSize'))}
+      <div class="field-label">Pixel animation speed</div>
+      ${radios('pixelSpeed', [['slow', 'Slow'], ['normal', 'Normal'], ['fast', 'Fast']], g('pixelSpeed'))}
+      <label class="check"><input type="checkbox" name="pixelHud"${g('pixelHud') ? ' checked' : ''}> Handheld interface: battery, signal, menu labels, progress bar (Pixel scene)</label>
+      <label class="check"><input type="checkbox" name="pixelCrt"${g('pixelCrt') ? ' checked' : ''}> CRT texture: faint scanlines and vignette (Pixel scene)</label>
+      <label class="check"><input type="checkbox" name="pixelAlbum"${g('pixelAlbum') ? ' checked' : ''}> Use album colours for the accent (Pixel scene)</label>
+      <label class="check"><input type="checkbox" name="pixelSound"${g('pixelSound') ? ' checked' : ''}> Tiny blip sound when the line changes (Pixel scene)</label>
       <label class="check"><input type="checkbox" name="emotion"${g('emotion') ? ' checked' : ''}> Glow on words like love, fire and night (some scenes)</label>
 ${this.host.desktop ? `      <label class="check"><input type="checkbox" name="beatPulse"${g('beatPulse') ? ' checked' : ''}> Pulse to the beat (listens to the sound your PC is playing)</label>
       <p>${esc(this.host.beatStatus?.() || '')}Windows only. Lyric Stars measures the loudness of your PC's audio output to find the beat; it records nothing and sends nothing. Windows may show a screen-capture indicator while this is on.</p>

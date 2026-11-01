@@ -31,6 +31,7 @@ import { createPolaroid } from './polaroid.js';
 import { createTerminal } from './terminal.js';
 import { createPaper } from './paper.js';
 import { createReel } from './reel.js';
+import { createPixel } from './pixel.js';
 
 export const SCENES = [
   { id: 'constellation', name: 'Constellation', create: createConstellation },
@@ -48,6 +49,7 @@ export const SCENES = [
   { id: 'terminal', name: 'Terminal', create: createTerminal },
   { id: 'paper', name: 'Paper', create: createPaper },
   { id: 'reel', name: 'Reel', create: createReel },
+  { id: 'pixel', name: 'Pixel', create: createPixel },
 ];
 
 export const SCENE_IDS = SCENES.map((s) => s.id);
