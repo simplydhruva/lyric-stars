@@ -40,7 +40,7 @@ export function preloadCover(track) {
     const image = large
       ? loadImage(large).catch(() => {}) // the same CORS mode as the scene, so its <img> reuses this download
       : Promise.resolve();
-    preloaded.set(k, Promise.all([image, albumPalette(small || large)]).then(() => {}));
+    preloaded.set(k, Promise.all([image, albumPalette(small || large, id)]).then(() => {}));
   }
   return preloaded.get(k);
 }

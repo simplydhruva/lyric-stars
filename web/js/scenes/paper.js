@@ -1,4 +1,4 @@
-// Paper: a light scene. A cream sheet (full screen; in the overlay only a card, so the desktop shows around it)
+// Paper: a light scene. A cream sheet (full screen)
 // and dark ink written by the pen as each word is sung. Older lines go greyer. The page chrome is switched to
 // light-on-cream colours in styles.css while this scene is active. Pure function of the playback position.
 import { createFitCache } from './line-draw.js';
@@ -24,18 +24,12 @@ export function createPaper() {
       cache.clear();
     },
     draw(frame) {
-      const { lines, index, w, h, pos, displayMode } = frame;
+      const { lines, index, w, h, pos } = frame;
       const quiet = frame.quiet ? 0.5 : 1;
-      let x = 0;
-      let y = 0;
-      let pw = w;
-      let ph = h;
-      if (displayMode === 'overlay') {
-        pw = w * 0.94;
-        ph = h * 0.9;
-        x = (w - pw) / 2;
-        y = (h - ph) / 2;
-      }
+      const x = 0;
+      const y = 0;
+      const pw = w;
+      const ph = h;
       ctx.save();
       ctx.globalAlpha = quiet;
       ctx.fillStyle = rgba(PAPER, 1);

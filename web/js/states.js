@@ -98,7 +98,7 @@ export const STATES = {
   plain: { soft: true, title: 'Lyrics found, but without timing', text: '{track}' },
   instrumental: { soft: true, title: 'Instrumental', text: '{track}' },
 
-  loading: { chip: 'Finding lyrics…' },
+  loading: { chip: 'Searching lyrics…' },
   paused: { chip: 'Paused' },
   buffering: { chip: 'Buffering…' },
   offline: { chip: 'Offline · using saved lyrics' },

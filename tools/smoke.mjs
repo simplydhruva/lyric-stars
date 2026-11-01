@@ -73,7 +73,7 @@ async function nowPlaying() {
       const r = await box('.np-retry');
       await click(r.x, r.y);
       await waitFor('searching', () => js(`document.querySelector('.np-label').textContent === 'Searching…'`));
-      await waitFor('the result', () => js(`document.querySelector('.np-label').textContent === 'Lyrics not found'`));
+      await waitFor('the result', () => js(`document.querySelector('.np-label').textContent === 'Lyrics not found'`), 20000); // the lookup retries after 2 s and 5 s before giving up
     });
     await step('the bar fades after 3 s without movement and returns on movement', async () => {
       await move(20, 20);
@@ -123,7 +123,7 @@ async function scenes() {
     });
     await step('the choice is remembered for this display mode, and survives a reload', async () => {
       assertEq(await saved('sceneWindow'), 'karaoke');
-      assertEq(await saved('sceneOverlay'), undefined); // other modes untouched
+      assertEq(await saved('sceneFullscreen'), undefined); // other modes untouched
       await open();
       assertEq(await scene(), 'karaoke');
     });
@@ -159,7 +159,7 @@ async function scenes() {
       await key('s', 'KeyS');
       await waitFor('the panel', () => js(`!document.getElementById('settings').hidden && Boolean(document.querySelector('input[name=sceneWindow]'))`));
       assertEq(await js(`document.querySelector('input[name=sceneWindow][value=constellation]').checked`), true);
-      assertEq(await js(`document.querySelector('input[name=sceneOverlay][value=karaoke]').checked`), true); // overlay default
+      assertEq(await js(`document.querySelector('input[name=sceneFullscreen][value=constellation]').checked`), true); // fullscreen default
       const b = await js(`(() => { const r = document.querySelector('input[name=sceneWindow][value=karaoke] + span').getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; })()`);
       await click(b.x, b.y);
       await waitFor('karaoke', async () => (await scene()) === 'karaoke');

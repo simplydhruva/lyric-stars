@@ -8,6 +8,7 @@ import { DemoSource } from './sources/demo.js';
 import { AutoSource } from './sources/auto.js';
 import { fetchLyrics, LyricsError } from './lyrics/lrclib.js';
 import * as cache from './cache.js';
+import { RETRY_DELAYS_MS, lookUpWithRetries, settle } from './lyrics/lookup.js';
 import { buildTimeline, timelineKind } from './timing.js';
 import { Renderer } from './renderer.js';
 import { DISPLAY_MODES, nextScene, randomScene, sceneName, sceneSettingKey, validScene } from './scenes/index.js';
@@ -57,7 +58,7 @@ export const app = {
   plays: Number(new URLSearchParams(location.search).get('seed')) || Math.floor(Math.random() * 1e9),
   retryTimer: null,
   randomPick: null, // scene picked for this song (random mode, or V while random is on)
-  desktop: desktop?.info() || null, // { style, overlay, update, ... } from the desktop shell
+  desktop: desktop?.info() || null, // { style, update, ... } from the desktop shell
 };
 
 watchErrors();
@@ -222,19 +223,19 @@ function applyVisuals() {
     font: g('font'),
     reduceMotion: g('reduceMotion'),
     glow: g('glow'),
-    backgroundEffects: g('backgroundEffects'),
+    sky: g('sky'),
     spread: g('spread'),
     chaos: g('chaos'),
     previewNext: g('previewNext'),
     songMap: g('songMap'),
     emotion: g('emotion'),
+    emojis: g('emojis'),
     beatPulse: g('beatPulse'),
-    transparent: app.desktop?.style === 'overlay' || app.desktop?.style === 'mini',
     palette: app.palette,
     art: app.track?.artLarge || app.track?.art || null,
   });
   nowPlaying.setStill(Boolean(g('reduceMotion')));
-  nowPlaying.setLook({ glow: g('glow') / 100, effects: g('backgroundEffects') / 100 });
+  nowPlaying.setLook({ glow: g('glow') / 100 });
   caption.setOptions({ romanize: g('romanize'), translate: g('translate') });
   updateCorner();
 }
@@ -251,13 +252,10 @@ function loadSceneChoices() {
 loadSceneChoices();
 
 function displayMode() {
-  const style = app.desktop?.style;
-  if (style === 'overlay' || style === 'mini') return 'overlay';
-  return style === 'fullscreen' || document.fullscreenElement ? 'fullscreen' : 'window';
+  return app.desktop?.style === 'fullscreen' || document.fullscreenElement ? 'fullscreen' : 'window';
 }
 
-// the mini widget has room for one line, so it always shows karaoke
-const activeScene = (mode = displayMode()) => (app.desktop?.style === 'mini' ? 'karaoke' : forcedScene && validScene(forcedScene, mode) === forcedScene ? forcedScene : app.randomPick) || sceneChoice[mode];
+const activeScene = (mode = displayMode()) => (forcedScene && validScene(forcedScene, mode) === forcedScene ? forcedScene : app.randomPick) || sceneChoice[mode];
 
 // V: the next scene. It becomes this display mode's favorite, or, in random mode, just this song's scene.
 function cycleScene() {
@@ -278,57 +276,32 @@ function pickSceneForSong(track) {
   app.randomPick = track && settings.get('sceneRandom') ? randomScene(activeScene()) : null;
 }
 
-// Desktop shell state: display style, overlay look, update notice.
+// Desktop shell state: display style (window or fullscreen), update notice.
 function applyDesktop(info) {
   const prev = app.desktop;
   app.desktop = info;
-  const mini = info.style === 'mini';
-  const overlay = info.style === 'overlay' || mini;
-  const root = document.documentElement;
-  root.classList.toggle('overlay', overlay);
-  root.classList.toggle('mini', mini);
-  root.classList.toggle('click-through', overlay && info.overlay.clickThrough);
-  root.style.setProperty('--backdrop', String(info.overlay.backdrop));
-  $('grip').hidden = !overlay;
-  $('btn-overlay').hidden = false;
-  $('btn-overlay').textContent = info.style === 'overlay' ? 'Window' : 'Overlay';
-  $('btn-mini').hidden = false;
-  $('btn-mini').textContent = mini ? 'Window' : 'Mini';
-  setMiniArt();
-  $('btn-fullscreen').hidden = overlay;
   $('btn-fullscreen').textContent = info.style === 'fullscreen' ? 'Exit fullscreen' : 'Fullscreen';
-  if (prev && info.style === 'overlay' && info.overlay.clickThrough !== prev.overlay.clickThrough) {
-    toast(info.overlay.clickThrough ? `Click-through on · ${shortcut(info.shortcuts.toggleClickThrough)} turns it off` : 'Click-through off');
-  }
   if (info.update?.available && !prev?.update?.available) toast(`Lyric Stars ${info.update.version} is available · Settings → Desktop app`);
   applyVisuals();
   // Don't rebuild the panel under a slider being dragged.
   if (!document.activeElement?.matches('#settings input[type=range]')) settingsPanel.render();
 }
 
-const shortcut = (accel) => accel.replace('Control', 'Ctrl');
 
-
-function loadPalette(track) {
+function loadPalette(track, retry = true) {
   app.palette = null;
-  if (!track?.art || !settings.get('albumColors')) return;
-  albumPalette(track.art).then((palette) => {
+  clearTimeout(app.paletteTimer);
+  if (!(track?.art || track?.artLarge) || !settings.get('albumColors')) return;
+  albumPalette(track.art || track.artLarge, track.id || track.key).then((palette) => {
     if (app.track?.key !== track.key) return;
     app.palette = palette;
     applyVisuals();
+    // A cover that gave no colors may just have failed to load: look once more shortly (a finished read is never repeated).
+    if (!palette.length && retry) app.paletteTimer = setTimeout(() => app.track?.key === track.key && loadPalette(track, false), 3000);
   });
 }
 
-// Mini widget: the cover on the left (the lyrics are drawn to its right by the usual scene).
-function setMiniArt() {
-  const art = $('mini-art');
-  const src = app.track?.art || '';
-  art.hidden = !src;
-  if (src && art.getAttribute('src') !== src) art.src = src;
-}
-
 function updateCorner() {
-  setMiniArt();
   const mode = settings.get('cornerInfo');
   const t = app.track;
   $('corner').hidden = mode === 'off' || !t;
@@ -504,6 +477,7 @@ function onTrackChange(track) {
   app.plays++;
   pickSceneForSong(track);
   nowPlaying.busy = false;
+  app.loadSeq++; // a lookup still out for the previous song must not land on this one
   app.lyrics = null;
   app.timeline = null;
   app.baseLines = null;
@@ -537,35 +511,53 @@ async function lookUpCover(track) {
 
 async function loadLyrics(track, { force = false } = {}) {
   const seq = ++app.loadSeq;
+  // An answer only counts while this song is still the one playing and no newer lookup has started.
+  const isCurrent = () => seq === app.loadSeq && app.track?.key === track.key;
   app.lyrics = { status: 'loading' };
   updateView();
   const cached = await cache.getLyrics(track);
-  if (seq !== app.loadSeq) return;
+  if (!isCurrent()) return;
   if (cached?.fresh && !force) return applyLyrics(track, cached.entry, false);
 
   if (force) app.lyricsRetries = 0;
-  try {
-    const result = await fetchLyrics(track, { rejectIds: cached?.entry.rejectIds || [], useBackup: settings.get('backupLyrics') });
-    if (seq !== app.loadSeq) return;
-    // Only a sure answer is saved. A "not found" where some request failed on the way is shown but not saved,
-    // and asked again later.
-    const entry = result.partial
-      ? { savedAt: Date.now(), track: { title: track.title, artists: track.artists }, result, rejectIds: cached?.entry.rejectIds || [] }
-      : await cache.putLyrics(track, result, { rejectIds: cached?.entry.rejectIds || [] });
-    console.info(`[lyrics] "${track.title}": ${result.status}${result.partial ? ' (not saved: a request failed on the way)' : ''}`);
-    if (result.partial) askAgainLater(track);
-    else app.lyricsRetries = 0;
-    applyLyrics(track, entry, false);
-  } catch (e) {
-    if (seq !== app.loadSeq) return;
-    if (!(e instanceof LyricsError)) throw e;
+  // Ask only once the song's details have held still (the PC's media session can name a song before it knows its length).
+  if (!(await settle(track, { isCurrent }))) return;
+  const known = track.durationMs > 0;
+  const rejectIds = cached?.entry.rejectIds || [];
+  const out = await lookUpWithRetries(
+    () => fetchLyrics(track, { rejectIds, useBackup: settings.get('backupLyrics') }),
+    {
+      isCurrent,
+      unsure: !known,
+      onRetry: (n) => {
+        console.info(`[lyrics] "${track.title}": nothing yet, asking again (${n}/${RETRY_DELAYS_MS.length})`);
+        app.lyrics = { status: 'loading', searching: true };
+        updateView();
+      },
+    },
+  );
+  if (!out) return; // the song changed while we were asking
+  if (out.error) {
+    const e = out.error;
     recordError(`lyrics: ${e.kind} (${e.message})`);
     console.info(`[lyrics] "${track.title}": ${e.kind}, ${e.message} (nothing saved)`);
     if (cached) return applyLyrics(track, cached.entry, e.kind === 'offline');
     app.lyrics = { status: e.kind === 'offline' ? 'lyrics-offline' : 'lyrics-service-down', detail: e.message };
     askAgainLater(track);
     updateView();
+    return;
   }
+  const result = out.result;
+  // Only a sure answer is saved. A "not found" where some request failed on the way, or where the song's length
+  // was never known, is shown but not saved, and asked again later. A timeout or a server error is never saved.
+  const entry = result.partial
+    ? { savedAt: Date.now(), track: { title: track.title, artists: track.artists }, result, rejectIds }
+    : await cache.putLyrics(track, result, { rejectIds });
+  if (!isCurrent()) return;
+  console.info(`[lyrics] "${track.title}": ${result.status}${result.partial ? ' (not saved: a request failed on the way)' : ''}`);
+  if (result.partial) askAgainLater(track);
+  else app.lyricsRetries = 0;
+  applyLyrics(track, entry, false);
 }
 
 // Asks the lyrics service again after 15 s, then 30 s, 60 s, up to 2 minutes, for as long as this song plays.
@@ -831,8 +823,6 @@ function toggleFullscreen() {
 
 $('btn-mode').addEventListener('click', toggleMode);
 $('btn-fullscreen').addEventListener('click', toggleFullscreen);
-$('btn-overlay').addEventListener('click', () => desktop?.toggleOverlay());
-$('btn-mini').addEventListener('click', () => desktop?.toggleMini());
 $('btn-wrong').addEventListener('click', rejectCurrentLyrics);
 $('btn-spike').addEventListener('click', toggleSpike);
 $('btn-editor').addEventListener('click', toggleEditor);
@@ -871,8 +861,6 @@ window.addEventListener('keydown', (e) => {
     nudgeSongOffset(e.code === 'BracketLeft' ? step : -step);
   } else if (e.code === 'Backslash') nudgeSongOffset(null);
   else if (k === 'f') toggleFullscreen();
-  else if (k === 'o' && desktop) desktop.toggleOverlay();
-  else if (k === 'n' && desktop) desktop.toggleMini();
   else if (k === 'm') toggleMode();
   else if (k === 'v') cycleScene();
   else if (k === 'd') toggleSpike();
@@ -944,7 +932,7 @@ function frame(now) {
   if (renderer.sceneId !== shownScene) document.documentElement.dataset.scene = shownScene = renderer.sceneId;
   const position = app.clock.position();
   caption.frame(drawPosition());
-  nowPlaying.frame(now, position);
+  nowPlaying.frame(now);
   bar.frame(position, app.track?.durationMs, app.clock.playing);
   spike.frame(position);
   editor.frame();

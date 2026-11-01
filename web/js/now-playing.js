@@ -1,16 +1,14 @@
 // The "now playing" scene shown instead of lyrics when there are none: the album
-// cover floating in a glow, a ring pulsing with the song, and a few drifting stars.
+// cover floating gently over the black sky, and a few drifting stars.
 // Motion maths is in now-playing-motion.js; the look is in css/now-playing.css.
 import { albumPalette } from './palette.js';
-import { coverMotion, ringPhase, ringStyle, makeStars, starAt, sceneColors, hashString } from './now-playing-motion.js';
+import { coverMotion, makeStars, starAt, sceneColors, hashString } from './now-playing-motion.js';
 
 const STAR_COUNT = 16;
 const MARKUP = `
   <div class="np-stage">
     <canvas class="np-stars" aria-hidden="true"></canvas>
     <div class="np-float">
-      <div class="np-glow"></div>
-      <div class="np-ring"></div>
       <div class="np-cover"><span class="np-fallback" aria-hidden="true">★</span><img alt=""></div>
     </div>
   </div>
@@ -29,7 +27,6 @@ export class NowPlaying {
       stage: q('.np-stage'),
       canvas: q('.np-stars'),
       float: q('.np-float'),
-      ring: q('.np-ring'),
       img: q('.np-cover img'),
       title: q('.np-title'),
       artist: q('.np-artist'),
@@ -101,12 +98,9 @@ export class NowPlaying {
     this.dirty = true;
   }
 
-  // glow 0..1: how strong the small halos around the drifting stars are. effects 0..1: the soft colour glow behind the
-  // cover and the pulsing ring; both stay off (a plain black scene) while Background effects is 0.
-  setLook({ glow = 0.25, effects = 0 } = {}) {
+  // glow 0..1: how strong the small halos around the drifting stars are. The background stays pure black.
+  setLook({ glow = 0.25 } = {}) {
     this.glowLevel = glow;
-    this.root.classList.toggle('fx', effects > 0);
-    this.root.style.setProperty('--np-fx', String(effects));
     this.dirty = true;
   }
 
@@ -116,8 +110,8 @@ export class NowPlaying {
     this.dirty = true;
   }
 
-  // Called every animation frame. positionMs is the song position, which paces the ring.
-  frame(now, positionMs) {
+  // Called every animation frame.
+  frame(now) {
     if (this.root.hidden) return;
     const dt = this.last == null ? 0 : Math.min(0.1, (now - this.last) / 1000);
     this.last = now;
@@ -125,9 +119,6 @@ export class NowPlaying {
     if (moving) this.motion += dt;
     const { dy, scale } = coverMotion(this.motion, this.still);
     this.el.float.style.transform = `translateY(${dy.toFixed(2)}px) scale(${scale.toFixed(4)})`;
-    const ring = ringStyle(ringPhase(positionMs), !moving);
-    this.el.ring.style.transform = `scale(${ring.scale.toFixed(3)})`;
-    this.el.ring.style.opacity = ring.opacity.toFixed(3);
     if (moving || this.dirty) {
       this._drawStars();
       this.dirty = false;
@@ -145,7 +136,7 @@ export class NowPlaying {
     this._setColors(sceneColors());
     const id = this.identity;
     const key = this.artKey;
-    albumPalette(track.art || track.artLarge).then((palette) => {
+    albumPalette(track.art || track.artLarge, track.id || track.key).then((palette) => {
       if (this.identity === id && this.artKey === key) this._setColors(sceneColors(palette));
     });
   }

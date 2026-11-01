@@ -19,7 +19,7 @@ Play a few songs you know well, in whatever languages you listen to, and try eac
 
 1. **Timing.** Do words light up when they're sung? If a song is early or late, press `[` or `]` to nudge it. Does it remember your nudge next time that song plays?
 2. **Pause, skip, and jump around in a song.** The stars should catch up within a second.
-3. **Display styles.** Press `F` for fullscreen and `O` for the floating overlay. Leave the overlay on top of a game or browser for a while.
+3. **Display styles.** Press `F` for fullscreen and again to come back to the window.
 4. **Settings** (`S`). Change the theme, turn on album colours, and switch between line and word mode (`M`).
 5. **Leave it running** through a long playlist. Does anything freeze, slow down, or log you out?
 

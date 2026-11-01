@@ -58,7 +58,7 @@ export class SettingsPanel {
       ${radios('mode', [['word', 'Word by word'], ['line', 'Line by line']], g('mode'))}
       <h3>Scene <span class="hint">(V switches)</span></h3>
       ${DISPLAY_MODES.map(
-        (m) => `<div class="field-label">${m === 'window' ? 'Window' : m === 'fullscreen' ? 'Fullscreen' : 'Overlay'}</div>
+        (m) => `<div class="field-label">${m === 'window' ? 'Window' : 'Fullscreen'}</div>
       ${radios(sceneSettingKey(m), SCENES.map((s) => [s.id, s.name]), validScene(g(sceneSettingKey(m)), m))}`
       ).join('')}
       <label class="check"><input type="checkbox" name="sceneRandom"${g('sceneRandom') ? ' checked' : ''}> Random scene each song</label>
@@ -74,10 +74,12 @@ export class SettingsPanel {
       <label class="field">Spread <input type="range" name="spread" min="0" max="100" step="5" value="${esc(g('spread'))}"> <b>${esc(g('spread'))}</b></label>
       <label class="field">Chaos <input type="range" name="chaos" min="0" max="100" step="5" value="${esc(g('chaos'))}"> <b>${esc(g('chaos'))}</b></label>
       <label class="field" title="The small glow on the star of the word being sung">Glow <input type="range" name="glow" min="0" max="100" step="5" value="${esc(g('glow'))}"> <b>${esc(g('glow'))}</b></label>
-      <label class="field" title="0 is plain black. Higher adds a faint nebula, drifting dust and shooting stars.">Background effects <input type="range" name="backgroundEffects" min="0" max="100" step="5" value="${esc(g('backgroundEffects'))}"> <b>${esc(g('backgroundEffects'))}</b></label>
+      <div class="field-label">Night sky <span class="hint">(behind every scene)</span></div>
+      ${radios('sky', [['off', 'Off'], ['stars', 'Stars'], ['comets', 'Stars + comets']], g('sky'))}
       <button type="button" data-set="resetSky">Reset sky to defaults</button>
       <label class="check"><input type="checkbox" name="previewNext"${g('previewNext') ? ' checked' : ''}> Preview the next line as faint dots (constellation)</label>
       <label class="check"><input type="checkbox" name="songMap"${g('songMap') ? ' checked' : ''}> Show the whole song as one map at the end (constellation)</label>
+      <label class="check"><input type="checkbox" name="emojis"${g('emojis') ? ' checked' : ''}> Emojis next to words like love and fire (Kinetic scene)</label>
       <label class="check"><input type="checkbox" name="emotion"${g('emotion') ? ' checked' : ''}> Glow on words like love, fire and night (some scenes)</label>
 ${this.host.desktop ? `      <label class="check"><input type="checkbox" name="beatPulse"${g('beatPulse') ? ' checked' : ''}> Pulse to the beat (listens to the sound your PC is playing)</label>
       <p>${esc(this.host.beatStatus?.() || '')}Windows only. Lyric Stars measures the loudness of your PC's audio output to find the beat; it records nothing and sends nothing. Windows may show a screen-capture indicator while this is on.</p>
@@ -108,8 +110,6 @@ ${this.host.desktop ? `      <label class="check"><input type="checkbox" name="b
     const d = this.host.desktop?.();
     if (!d) return '';
     const { info } = d;
-    const o = info.overlay;
-    const pct = (v) => Math.round(v * 100);
     const keys = (a) => esc(a.replace('Control', 'Ctrl'));
     let update = '';
     if (info.updatesEnabled) {
@@ -127,11 +127,8 @@ ${this.host.desktop ? `      <label class="check"><input type="checkbox" name="b
     }
     return `
       <h3>Desktop app</h3>
-      ${radios('desk:style', [['window', 'Window'], ['fullscreen', 'Fullscreen'], ['overlay', 'Overlay']], info.style)}
-      <p>F fullscreen · O overlay · ${keys(info.shortcuts.toggleShow)} show or hide · ${keys(info.shortcuts.toggleClickThrough)} click-through</p>
-      <label class="field">Overlay opacity <input type="range" name="desk:opacity" min="30" max="100" step="5" value="${pct(o.opacity)}"> <b>${pct(o.opacity)}%</b></label>
-      <label class="field">Overlay background <input type="range" name="desk:backdrop" min="0" max="85" step="5" value="${pct(o.backdrop)}"> <b>${pct(o.backdrop)}%</b></label>
-      <label class="check"><input type="checkbox" name="desk:clickThrough"${o.clickThrough ? ' checked' : ''}> Click-through overlay (clicks go to the window below)</label>
+      ${radios('desk:style', [['window', 'Window'], ['fullscreen', 'Fullscreen']], info.style)}
+      <p>F fullscreen · ${keys(info.shortcuts.toggleShow)} show or hide</p>
       <label class="check"><input type="checkbox" name="desk:startWithWindows"${info.startWithWindows ? ' checked' : ''}${info.canStartWithWindows ? '' : ' disabled'}> Start with Windows${info.canStartWithWindows ? '' : ' (installed app only)'}</label>
       <label class="check"><input type="checkbox" name="desk:openToTray"${info.openToTray ? ' checked' : ''}> Open to the tray at startup</label>
       <p>Version ${esc(info.version)}${info.secureTokens ? ' · Spotify login stored encrypted' : ''}</p>
@@ -142,10 +139,6 @@ ${this.host.desktop ? `      <label class="check"><input type="checkbox" name="b
     const { bridge } = this.host.desktop();
     const v = input.type === 'checkbox' ? input.checked : input.value;
     if (name === 'style') bridge.setStyle(v);
-    else if (name === 'opacity' || name === 'backdrop') {
-      input.nextElementSibling.textContent = `${v}%`;
-      bridge.setOverlay({ [name]: Number(v) / 100 });
-    } else if (name === 'clickThrough') bridge.setOverlay({ clickThrough: v });
     else bridge.setOption(name, v);
   }
 
@@ -198,7 +191,7 @@ ${this.host.desktop ? `      <label class="check"><input type="checkbox" name="b
     settings.set('spread', 100);
     settings.set('chaos', 50);
     settings.set('glow', 25);
-    settings.set('backgroundEffects', 0);
+    settings.set('sky', 'comets');
     this.host.onChange('spread');
     this.render();
   }

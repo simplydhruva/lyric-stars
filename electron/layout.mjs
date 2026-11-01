@@ -1,23 +1,19 @@
 // Window placement rules, kept free of Electron so they can be tested in node.
 
-export const STYLES = ['window', 'fullscreen', 'overlay', 'mini'];
+export const STYLES = ['window', 'fullscreen'];
 
 export const DEFAULT_STATE = {
   style: 'window',
   previousStyle: 'window', // where F returns to from fullscreen
   window: { bounds: null, maximized: false },
   fullscreen: { displayId: null },
-  overlay: { bounds: null, opacity: 1, backdrop: 0.35, clickThrough: false },
-  mini: { bounds: null }, // the small corner widget
   openToTray: false,
 };
 
 const SIZES = {
   window: { width: 1100, height: 680, minWidth: 360, minHeight: 240 },
-  overlay: { width: 760, height: 260, minWidth: 260, minHeight: 120 },
-  mini: { width: 420, height: 112, minWidth: 260, minHeight: 80 },
 };
-export const MIN_SIZE = { window: [SIZES.window.minWidth, SIZES.window.minHeight], overlay: [SIZES.overlay.minWidth, SIZES.overlay.minHeight], mini: [SIZES.mini.minWidth, SIZES.mini.minHeight] };
+export const MIN_SIZE = { window: [SIZES.window.minWidth, SIZES.window.minHeight] };
 
 // Merges a saved state file over the defaults, dropping anything malformed.
 export function normalizeState(saved) {
@@ -28,12 +24,7 @@ export function normalizeState(saved) {
   if (isRect(saved.window?.bounds)) s.window.bounds = saved.window.bounds;
   s.window.maximized = saved.window?.maximized === true;
   if (Number.isFinite(saved.fullscreen?.displayId)) s.fullscreen.displayId = saved.fullscreen.displayId;
-  const o = saved.overlay || {};
-  if (isRect(o.bounds)) s.overlay.bounds = o.bounds;
-  if (Number.isFinite(o.opacity)) s.overlay.opacity = clamp(o.opacity, 0.3, 1);
-  if (Number.isFinite(o.backdrop)) s.overlay.backdrop = clamp(o.backdrop, 0, 0.85);
-  s.overlay.clickThrough = o.clickThrough === true;
-  if (isRect(saved.mini?.bounds)) s.mini.bounds = saved.mini.bounds;
+  // Saved overlay and mini settings from older versions are simply not read; a saved style of either becomes 'window'.
   s.openToTray = saved.openToTray === true;
   return s;
 }
@@ -53,7 +44,7 @@ function overlap(a, b) {
 // Where a window of this kind should open. Saved bounds are kept only if enough
 // of the window is still on a connected screen (monitors get unplugged); they
 // are shrunk to fit that screen's work area. Otherwise it opens centered on the
-// primary screen (overlay: near the bottom, where subtitles usually sit).
+// primary screen.
 // displays: [{ id, workArea: {x,y,width,height}, primary? }]
 export function placeWindow(kind, saved, displays) {
   const size = SIZES[kind];
@@ -72,8 +63,7 @@ export function placeWindow(kind, saved, displays) {
   const width = Math.min(size.width, wa.width);
   const height = Math.min(size.height, wa.height);
   const x = Math.round(wa.x + (wa.width - width) / 2);
-  if (kind === 'mini') return { x: wa.x + wa.width - width - 24, y: wa.y + wa.height - height - 24, width, height }; // bottom right corner
-  const y = kind === 'overlay' ? Math.round(wa.y + wa.height - height - wa.height * 0.08) : Math.round(wa.y + (wa.height - height) / 2);
+  const y = Math.round(wa.y + (wa.height - height) / 2);
   return { x, y, width, height };
 }
 

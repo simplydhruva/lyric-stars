@@ -75,16 +75,10 @@
 body.controls-hidden #player { opacity: 0; pointer-events: none; }
 body.controls-hidden #player.has-message { opacity: 1; pointer-events: auto; }
 
-/* Overlay: out of the way unless the mouse is on it, or it has something to say. */
-html.overlay #player { bottom: 44px; }
-html.overlay #player:not(:hover):not(.has-message) { opacity: 0; }
-html.overlay body.controls-hidden #player { pointer-events: auto; } /* so hovering can bring it back */
-html.click-through #player { display: none; }
 
 /* The nav wraps onto a second row on narrow windows. */
 @media (max-width: 820px) {
   #player { bottom: 112px; }
-  html.overlay #player { bottom: 80px; }
 }
 
 /* The paper scene is cream: the time labels and the empty part of the track go dark so they can be read. */

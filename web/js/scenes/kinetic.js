@@ -4,6 +4,7 @@
 // line in at once. When the next line starts, the old one fades out. Pure function of the playback position.
 import { detectChorus } from './chorus.js';
 import { drawEmotion } from './emotion.js';
+import { EMOJI_FONT, emojisForLine } from './emoji.js';
 import { exitAlpha, layoutKinetic, loudestIndex, revealedEnd, tilt, wordEntrance, wordScales } from './kinetic-layout.js';
 
 const rgba = ([r, g, b], a) => `rgba(${r},${g},${b},${a})`;
@@ -37,10 +38,26 @@ export function createKinetic() {
     if (!l) {
       const words = frame.lines[index].words;
       const scales = wordScales(words, repeats[index]?.chorus);
-      l = { scales, loudest: loudestIndex(words), fit: layoutKinetic(words.map((x) => x.text), scales, measureAt(frame), { maxW, baseFont }) };
+      l = { emojis: emojisForLine(words), scales, loudest: loudestIndex(words), fit: layoutKinetic(words.map((x) => x.text), scales, measureAt(frame), { maxW, baseFont }) };
       layouts.set(index, l);
     }
     return l;
+  }
+
+  // The emoji of a word, up and to the right of it, on the word's own start frame (no delay, same landing as the word).
+  // It is never rotated, and with reduce motion it simply sits there. The size is whole pixels so it stays crisp.
+  function drawEmoji(frame, emoji, cx, cy, width, size, alpha) {
+    const px = Math.round(clamp(size * 0.6, 22, 90));
+    const x = clamp(cx + width / 2 + px * 0.2, px * 0.7, frame.w - px * 0.7);
+    const y = Math.max(px * 0.7, cy - size * 0.55);
+    ctx.save();
+    ctx.globalAlpha = alpha * (frame.quiet ? 0.35 : 1);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = `${px}px ${EMOJI_FONT}`;
+    ctx.fillStyle = '#fff';
+    ctx.fillText(emoji, Math.round(x), Math.round(y));
+    ctx.restore();
   }
 
   // Draws one line. `alpha` fades the whole line; `entering` is false for the line that is fading out.
@@ -48,7 +65,7 @@ export function createKinetic() {
     const { pos, theme, reduceMotion, mode } = frame;
     const line = frame.lines[index];
     if (!line.words.length || alpha <= 0.004) return;
-    const { scales, loudest, fit: f } = layoutOf(frame, index, baseFont, maxW);
+    const { scales, loudest, emojis, fit: f } = layoutOf(frame, index, baseFont, maxW);
     const star = lift(theme.star, 0.18);
     const hot = theme.core || lift(theme.star, 0.6);
 
@@ -81,6 +98,7 @@ export function createKinetic() {
         ctx.fillStyle = rgba(mix(star, hot, strength), alpha * (frame.quiet ? 0.35 : 1));
         ctx.fillText(word.text, 0, 0);
         ctx.restore();
+        if (frame.emojis && emojis[i]) drawEmoji(frame, emojis[i], cx + slide, cy - size * 0.18 * e.drop, f.widths[i], size, alpha);
       }
     });
     ctx.restore();

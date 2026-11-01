@@ -1,7 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { emotionOf, emotionLook, drawEmotion, EMOTION_COLORS } from '../web/js/scenes/emotion.js';
-import { streaksAt, STAR_MS, MIN_GAP_MS } from '../web/js/shooting-stars.js';
 import { createScene } from '../web/js/scenes/index.js';
 
 function fakeCtx() {
@@ -63,23 +62,6 @@ test('drawEmotion paints only emotion words, only when on, and only from the wor
   assert.equal(run('table'), 0);
   assert.equal(run('fire', { emotion: false }), 0);
   assert.equal(run('fire', {}, -1), 0);
-});
-
-test('shooting stars: one in a long gap, none in a short one, none before the line ends or after the streak', () => {
-  const word = (t) => ({ text: 'x', start: t, end: t + 500 });
-  const lines = [
-    { time: 1000, end: 3000, words: [word(1000)] },
-    { time: 9000, end: 11000, words: [word(9000)] }, // 6 s gap after line 0
-    { time: 11200, end: 12000, words: [word(11200)] }, // 200 ms gap after line 1
-  ];
-  assert.equal(streaksAt(lines, 0, 2900, 800, 600).length, 0);
-  assert.equal(streaksAt(lines, 0, 3500, 800, 600).length, 1);
-  assert.equal(streaksAt(lines, 0, 3120 + STAR_MS + 50, 800, 600).length, 0);
-  assert.ok(200 < MIN_GAP_MS);
-  for (let p = 11000; p < 12500; p += 50) assert.equal(streaksAt(lines, p < 11200 ? 1 : 2, p, 800, 600).length, 0);
-  const s = streaksAt(lines, 0, 3500, 800, 600)[0];
-  assert.ok(s.alpha > 0 && s.alpha <= 1 && s.head >= s.tail);
-  assert.deepEqual(streaksAt(lines, 0, 3500, 800, 600), streaksAt(lines, 0, 3500, 800, 600)); // same position, same streak
 });
 
 // the six scenes that show emotion glow draw more when a line has an emotion word; the others never change

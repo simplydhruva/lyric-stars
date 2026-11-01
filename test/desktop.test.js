@@ -9,26 +9,21 @@ const right = { id: 2, workArea: { x: 1920, y: 0, width: 2560, height: 1400 } };
 test('state: garbage falls back to defaults', () => {
   assert.deepEqual(normalizeState(null), DEFAULT_STATE);
   assert.deepEqual(normalizeState('nope'), DEFAULT_STATE);
-  const s = normalizeState({ style: 'huge', window: { bounds: { x: 'a' } }, overlay: { opacity: 9, backdrop: -1 } });
+  const s = normalizeState({ style: 'huge', window: { bounds: { x: 'a' } } });
   assert.equal(s.style, 'window');
   assert.equal(s.window.bounds, null);
-  assert.equal(s.overlay.opacity, 1);
-  assert.equal(s.overlay.backdrop, 0);
 });
 
 test('state: fullscreen is never a style to return to', () => {
   const s = normalizeState({ style: 'fullscreen', previousStyle: 'fullscreen' });
   assert.equal(s.style, 'fullscreen');
   assert.equal(s.previousStyle, 'window');
-  assert.equal(normalizeState({ previousStyle: 'overlay' }).previousStyle, 'overlay');
+  assert.equal(normalizeState({ previousStyle: 'overlay' }).previousStyle, 'window'); // a removed style
 });
 
-test('placement: first launch centers the window, overlay sits low', () => {
+test('placement: first launch centers the window', () => {
   const w = placeWindow('window', null, [primary]);
   assert.deepEqual(w, { x: 410, y: 180, width: 1100, height: 680 });
-  const o = placeWindow('overlay', null, [primary]);
-  assert.equal(o.width, 760);
-  assert.ok(o.y > 600 && o.y + o.height < 1040);
 });
 
 test('placement: saved bounds on a second monitor are kept', () => {
@@ -53,8 +48,8 @@ test('placement: too big for a smaller screen is shrunk to fit', () => {
 });
 
 test('placement: a sliver left on screen is not trusted', () => {
-  const r = placeWindow('overlay', { x: 1900, y: 900, width: 760, height: 260 }, [primary]);
-  assert.deepEqual(r, placeWindow('overlay', null, [primary]));
+  const r = placeWindow('window', { x: 1900, y: 900, width: 760, height: 260 }, [primary]);
+  assert.deepEqual(r, placeWindow('window', null, [primary]));
 });
 
 test('fullscreen goes to the remembered screen if it is still there', () => {
@@ -111,15 +106,12 @@ test('update check: prereleases, no releases and errors', async () => {
   await assert.rejects(checkForUpdate({ repo: 'me/ls', currentVersion: '0.1.0', fetchFn: reply(500, {}) }));
 });
 
-test('mini widget: small, bottom right corner, remembered, and kept on screen', () => {
-  const primary = { id: 1, primary: true, workArea: { x: 0, y: 0, width: 1920, height: 1040 } };
-  const m = placeWindow('mini', null, [primary]);
-  assert.deepEqual(m, { x: 1920 - 420 - 24, y: 1040 - 112 - 24, width: 420, height: 112 });
-  const saved = { x: 100, y: 100, width: 420, height: 112 };
-  assert.deepEqual(placeWindow('mini', saved, [primary]), saved);
-  assert.deepEqual(placeWindow('mini', { x: 5000, y: 5000, width: 420, height: 112 }, [primary]), m); // monitor unplugged
-  const s = normalizeState({ style: 'mini', mini: { bounds: saved } });
-  assert.equal(s.style, 'mini');
-  assert.deepEqual(s.mini.bounds, saved);
-  assert.equal(normalizeState({ style: 'mini', mini: { bounds: { x: 'a' } } }).mini.bounds, null);
+test('state from older versions (overlay, mini) loads as a normal window without crashing', () => {
+  for (const style of ['overlay', 'mini']) {
+    const s = normalizeState({ style, previousStyle: style, overlay: { opacity: 0.5 }, mini: { bounds: { x: 1, y: 2, width: 3, height: 4 } } });
+    assert.equal(s.style, 'window');
+    assert.equal(s.previousStyle, 'window');
+    assert.equal(s.overlay, undefined);
+    assert.equal(s.mini, undefined);
+  }
 });

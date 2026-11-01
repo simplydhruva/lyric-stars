@@ -87,12 +87,8 @@ export function createConstellation() {
         return ctx.measureText(text).width;
       },
     });
-    // A line sung again returns to the very same stars as the first time, so the earlier constellation comes back.
-    const c = chorus[index];
-    if (c && c.occurrence > 0 && c.firstIndex < index) {
-      const first = layout(frame, c.firstIndex);
-      if (first.stars.length === placed.stars.length && first.stars.length) return { ...placed, stars: first.stars, links: first.links, font: first.font };
-    }
+    // A line sung again gets stars of its own (bigger and brighter, see REPEAT_SIZE), never the positions of the first
+    // time: those stars faded long ago, and putting stars back on them looked like old dots coming back.
     return placed;
   }
 
@@ -212,8 +208,8 @@ export function createConstellation() {
     }
   }
 
-  // The whole song as one picture: every line's stars and links together. Lines sung again sit on the same
-  // stars, so the chorus shines brightest. Drawn once into its own canvas and then just faded in.
+  // The whole song as one picture: every line's stars and links together. Lines sung again are drawn bigger and
+  // brighter in the line itself, not here. Drawn once into its own canvas and then just faded in.
   function songMap(frame) {
     const { w, h, dpr, lines, theme } = frame;
     const key = [w, h, dpr, theme.star.join(), layoutKey?.key.join('|')].join('#');
@@ -250,6 +246,11 @@ export function createConstellation() {
     name: 'Constellation',
     init(_canvas, context) {
       ctx = context;
+    },
+    // The stars of a line (for the tests).
+    layoutFor(frame, index) {
+      checkCache(frame);
+      return layout(frame, index);
     },
     resize() {
       map = null;

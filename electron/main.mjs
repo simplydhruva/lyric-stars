@@ -19,7 +19,7 @@ const ICON = path.join(HERE, 'icons', 'icon.png');
 const TRAY_ICON = path.join(HERE, 'icons', 'tray.png');
 const DESKTOP_DIR = path.join(DEFAULT_DATA_DIR, 'desktop');
 const STATE_FILE = path.join(DESKTOP_DIR, 'desktop.json');
-const SHORTCUTS = { toggleShow: 'Control+Alt+L', toggleClickThrough: 'Control+Alt+K' };
+const SHORTCUTS = { toggleShow: 'Control+Alt+L' };
 const UPDATE_EVERY_MS = 24 * 60 * 60 * 1000;
 // Pages the shell may open in the user's browser; everything else is refused.
 const EXTERNAL_OK = [/^https:\/\/accounts\.spotify\.com\//, /^https:\/\/developer\.spotify\.com\//, /^https:\/\/github\.com\//];
@@ -71,8 +71,6 @@ function info() {
   return {
     style: state.style,
     version: app.getVersion(),
-    overlay: { ...state.overlay },
-    mini: { ...state.mini },
     openToTray: state.openToTray,
     startWithWindows: app.isPackaged && app.getLoginItemSettings().openAtLogin,
     canStartWithWindows: app.isPackaged,
@@ -173,22 +171,16 @@ function displays() {
 }
 
 function createWindow(style, url, { replacing = null } = {}) {
-  const overlay = style === 'overlay' || style === 'mini'; // both are transparent, frameless and on top
-  const kind = style === 'mini' ? 'mini' : overlay ? 'overlay' : 'window';
-  const bounds = placeWindow(kind, state[kind].bounds, displays());
+  const bounds = placeWindow('window', state.window.bounds, displays());
   const w = new BrowserWindow({
     ...bounds,
-    minWidth: MIN_SIZE[kind][0],
-    minHeight: MIN_SIZE[kind][1],
+    minWidth: MIN_SIZE.window[0],
+    minHeight: MIN_SIZE.window[1],
     show: false,
     title: 'Lyric Stars',
     icon: ICON,
-    backgroundColor: overlay ? '#00000000' : '#000000',
-    transparent: overlay,
-    frame: !overlay,
-    hasShadow: !overlay,
+    backgroundColor: '#000000',
     resizable: true,
-    fullscreenable: !overlay,
     autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(HERE, 'preload.cjs'),
@@ -200,12 +192,7 @@ function createWindow(style, url, { replacing = null } = {}) {
     },
   });
   w.setMenu(null);
-  if (overlay) {
-    // Above full-screen video and borderless games, like subtitles.
-    w.setAlwaysOnTop(true, 'screen-saver');
-    w.setOpacity(state.overlay.opacity);
-    applyClickThrough(w);
-  } else if (state.window.maximized) w.maximize();
+  if (state.window.maximized) w.maximize();
   harden(w.webContents);
 
   // move/resize also fire for moves made by code and by Windows snapping.
@@ -220,7 +207,7 @@ function createWindow(style, url, { replacing = null } = {}) {
   w.on('leave-full-screen', () => {
     // Left fullscreen some other way than our own toggle.
     if (w === win && state.style === 'fullscreen') {
-      state.style = state.previousStyle === 'overlay' ? 'window' : state.previousStyle;
+      state.style = state.previousStyle;
       saveState();
       pushState();
     }
@@ -234,8 +221,7 @@ function createWindow(style, url, { replacing = null } = {}) {
   });
 
   w.once('ready-to-show', () => {
-    if (overlay) w.showInactive(); // don't steal focus from the game or video
-    else w.show();
+    w.show();
     if (style === 'fullscreen') enterFullscreen(w);
     if (replacing && !replacing.isDestroyed()) replacing.destroy();
   });
@@ -245,11 +231,8 @@ function createWindow(style, url, { replacing = null } = {}) {
 
 function rememberBounds(w, style = state.style) {
   if (w.isDestroyed() || w.isFullScreen() || w.isMinimized()) return;
-  if (style === 'overlay' || style === 'mini') state[style].bounds = w.getBounds();
-  else {
-    state.window.maximized = w.isMaximized();
-    state.window.bounds = w.getNormalBounds();
-  }
+  state.window.maximized = w.isMaximized();
+  state.window.bounds = w.getNormalBounds();
   saveState();
 }
 
@@ -275,21 +258,10 @@ function setStyle(style) {
   }
   const from = state.style;
   if (from !== 'fullscreen') rememberBounds(win, from);
-  if (from !== 'fullscreen' && from !== 'mini') state.previousStyle = from;
+  if (from !== 'fullscreen') state.previousStyle = from;
   state.style = style;
   saveState();
-  const floating = (s) => s === 'overlay' || s === 'mini';
-  if (floating(from) && floating(style)) {
-    // Overlay and mini share one transparent window; only its size and place change.
-    win.setBounds(placeWindow(style, state[style].bounds, displays()));
-    applyClickThrough();
-  } else if (floating(from) !== floating(style)) {
-    // Transparency is fixed when a window is made, so overlay gets its own window.
-    // The page reloads; lyrics come back from the cache and playback resyncs.
-    const old = win;
-    if (old.isFullScreen()) old.setFullScreen(false);
-    win = createWindow(style, old.webContents.getURL() || ORIGIN + '/', { replacing: old });
-  } else if (style === 'fullscreen') enterFullscreen(win);
+  if (style === 'fullscreen') enterFullscreen(win);
   else win.setFullScreen(false);
   pushState();
 }
@@ -298,45 +270,15 @@ function toggleFullscreen() {
   setStyle(state.style === 'fullscreen' ? state.previousStyle : 'fullscreen');
 }
 
-function toggleMini() {
-  setStyle(state.style === 'mini' ? (state.previousStyle === 'fullscreen' ? 'window' : state.previousStyle) : 'mini');
-}
-
-function toggleOverlay() {
-  setStyle(state.style === 'overlay' ? 'window' : 'overlay');
-}
-
-function applyClickThrough(w = win) {
-  if (!w || state.style !== 'overlay') return w?.setIgnoreMouseEvents(false);
-  // forward: the page still sees the mouse move, so hover hints keep working.
-  w.setIgnoreMouseEvents(state.overlay.clickThrough, { forward: true });
-}
-
-function setOverlay(opts = {}) {
-  const o = state.overlay;
-  if (Number.isFinite(opts.opacity)) o.opacity = Math.min(1, Math.max(0.3, opts.opacity));
-  if (Number.isFinite(opts.backdrop)) o.backdrop = Math.min(0.85, Math.max(0, opts.backdrop));
-  if (typeof opts.clickThrough === 'boolean') o.clickThrough = opts.clickThrough;
-  if (state.style === 'overlay' && win) {
-    win.setOpacity(o.opacity);
-    applyClickThrough();
-  }
-  saveState();
-  pushState();
-}
-
 function showWindow() {
   if (!win) {
     win = createWindow(state.style, startUrl());
     return buildTrayMenu();
   }
   if (win.isMinimized()) win.restore();
-  if (state.style === 'overlay' || state.style === 'mini') win.showInactive();
-  else {
-    win.show();
-    win.focus();
-    if (state.style === 'fullscreen' && !win.isFullScreen()) enterFullscreen(win);
-  }
+  win.show();
+  win.focus();
+  if (state.style === 'fullscreen' && !win.isFullScreen()) enterFullscreen(win);
 }
 
 function toggleShow() {
@@ -390,9 +332,6 @@ function registerIpc() {
   on('ls:tokens-set', (_e, json) => secrets.set(typeof json === 'string' ? json : null));
   on('ls:style', (_e, style) => setStyle(style));
   on('ls:toggle-fullscreen', () => toggleFullscreen());
-  on('ls:toggle-overlay', () => toggleOverlay());
-  on('ls:toggle-mini', () => toggleMini());
-  on('ls:overlay', (_e, opts) => setOverlay(opts && typeof opts === 'object' ? opts : {}));
   on('ls:option', (_e, key, value) => setOption(key, value));
   on('ls:open-release', () => update?.url && openExternal(update.url));
   on('ls:open-login', (_e, url) => {
@@ -413,8 +352,7 @@ function setOption(key, value) {
 function onLoginHandoff(params) {
   if (!win) return false;
   win.webContents.send('ls:login', params);
-  if (state.style === 'overlay' || state.style === 'mini') win.showInactive();
-  else showWindow();
+  showWindow();
   return true;
 }
 
@@ -437,15 +375,6 @@ function buildTrayMenu() {
     { type: 'separator' },
     style('window', 'Window'),
     style('fullscreen', 'Fullscreen'),
-    style('overlay', 'Overlay'),
-    style('mini', 'Mini widget'),
-    {
-      label: 'Click-through overlay',
-      type: 'checkbox',
-      accelerator: SHORTCUTS.toggleClickThrough,
-      checked: state.overlay.clickThrough,
-      click: (item) => setOverlay({ clickThrough: item.checked }),
-    },
     { type: 'separator' },
     {
       label: 'Start with Windows',
@@ -471,7 +400,6 @@ function registerShortcuts() {
     }
   };
   ok(SHORTCUTS.toggleShow, toggleShow);
-  ok(SHORTCUTS.toggleClickThrough, () => setOverlay({ clickThrough: !state.overlay.clickThrough }));
 }
 
 // ---- updates -------------------------------------------------------------------

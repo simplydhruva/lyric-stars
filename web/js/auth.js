@@ -41,7 +41,7 @@ if (desktop) {
   }
 }
 
-// The desktop window can be replaced (overlay style) while the browser is open,
+// The desktop window can be reloaded while the browser is open (the login is handed back to it),
 // so there the pending login outlives the page, for a few minutes.
 const pendingStorage = () => (desktop ? localStorage : sessionStorage);
 

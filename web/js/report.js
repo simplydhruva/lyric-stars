@@ -44,7 +44,7 @@ export function buildReport(parts) {
     at: new Date().toISOString(),
     version: app.desktop?.version || 'browser',
     env,
-    desktop: app.desktop ? { style: app.desktop.style, overlay: app.desktop.overlay } : null,
+    desktop: app.desktop ? { style: app.desktop.style } : null,
     login: { loggedIn, builtInClientId, authState: app.authState || null },
     source: sourceLabel,
     problem: app.problem ? { code: app.problem.code, message: app.problem.message } : null,

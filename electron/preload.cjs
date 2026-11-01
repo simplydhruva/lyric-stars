@@ -14,7 +14,7 @@ if (ORIGIN && location.origin === ORIGIN) {
   };
 
   contextBridge.exposeInMainWorld('lyricStars', {
-    // { style, version, overlay, openToTray, startWithWindows, canStartWithWindows, update, secureTokens }
+    // { style, version, openToTray, startWithWindows, canStartWithWindows, update, secureTokens }
     info: () => ipcRenderer.sendSync('ls:info'),
     tokens: {
       get: () => tokens,
@@ -25,9 +25,6 @@ if (ORIGIN && location.origin === ORIGIN) {
     },
     setStyle: (style) => ipcRenderer.send('ls:style', style),
     toggleFullscreen: () => ipcRenderer.send('ls:toggle-fullscreen'),
-    toggleOverlay: () => ipcRenderer.send('ls:toggle-overlay'),
-    toggleMini: () => ipcRenderer.send('ls:toggle-mini'),
-    setOverlay: (opts) => ipcRenderer.send('ls:overlay', opts),
     setOption: (key, value) => ipcRenderer.send('ls:option', key, value),
     checkForUpdates: () => ipcRenderer.invoke('ls:check-updates'),
     openRelease: () => ipcRenderer.send('ls:open-release'),

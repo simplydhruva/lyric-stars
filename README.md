@@ -17,7 +17,7 @@ npm run harness  # timing report for the reference songs (add -- --update-baseli
 
 Open http://127.0.0.1:5173/ (localhost redirects there, because Spotify only accepts loopback IPs).
 
-- **Keys:** `S` settings, `F` fullscreen, `O` overlay (desktop app), `M` word/line mode, `V` switches scene, `D` diagnostics, `E` sync editor, `Esc` closes panels,
+- **Keys:** `S` settings, `F` fullscreen, `M` word/line mode, `V` switches scene, `D` diagnostics, `E` sync editor, `Esc` closes panels,
   `[` / `]` lyrics earlier / later for this song (50 ms; hold Shift for 10 ms).
 - **Demo without Spotify:** http://127.0.0.1:5173/?demo&start=30 plays Coldplay "Yellow" with no audio.
   `P` pauses, arrow keys seek 10 s. Other songs: `?demo&title=...&artist=...&album=...&duration=<seconds>`.
@@ -39,10 +39,8 @@ npm run helper   # rebuild native/bin/lyricstars-media.exe (desktop and dist do 
 
 - The same page, served by the same local server on 127.0.0.1:5173, inside Electron. The page gets no Node access, only a
   small `window.lyricStars` bridge. Navigation is locked to that origin; only Spotify, the Spotify developer site and GitHub open in the browser.
-- **Mini widget (`N`, the Mini button, or the tray):** a small always-on-top corner window with the cover and one line of lyrics (Karaoke). It reuses the overlay's opacity, dim and click-through, and drags from anywhere. `N` again returns to the window.
-- **Styles:** window, fullscreen (`F`), overlay (`O`) and mini (`N`): always on top, see-through, with opacity, background dim and
-  click-through. Each style remembers its own size, place and monitor in `%APPDATA%\LyricStars\desktop\desktop.json`.
-- **Shortcuts (any app):** `Ctrl+Alt+L` show or hide, `Ctrl+Alt+K` click-through. Tray: show, styles, click-through,
+- **Styles:** window and fullscreen (`F`). Each style remembers its own size, place and monitor in `%APPDATA%\LyricStars\desktop\desktop.json`. (The overlay and mini widget of older versions are gone; a saved setting for either is ignored and the app opens as a normal window.)
+- **Shortcuts (any app):** `Ctrl+Alt+L` show or hide. Tray: show, styles,
   start with Windows, open to tray (no window or drawing until shown), update check, quit. Closing the window quits.
 - **Login:** opens the system browser. That tab hands the code back to the app via `POST /api/login-handoff`; the PKCE verifier never
   leaves the app. Tokens are encrypted with Electron safeStorage (DPAPI) in `desktop\tokens.bin`.
@@ -77,8 +75,7 @@ Diagnostics (`D`) shows which source and player are in use.
 - **Backup lyrics source (Settings → Lyric text, on by default):** LRCLIB is a free community service and sometimes goes down. When it fails, or has no timed lyrics for a song, the app asks NetEase Music's public search through its own local server (title and artist go to music.163.com; nothing else does). It is unofficial and could stop working at any time, and then the app simply finds nothing. The no-wrong-lyrics rule is unchanged: title, artist and length (within 3 s) must match. Timing of backup lyrics is line by line, like LRCLIB. Switch it off if you do not want song titles sent there.
 - **Player bar** (bottom centre, fades after 3 s without mouse movement): previous, play/pause, next, and a progress bar you
   can click to seek. Shortcuts: `Space` play/pause, `←` previous, `→` next (`Space` still taps in the sync editor and
-  the diagnostics tap test while those are open). It needs the Spotify account, not the PC-only source, and in the
-  transparent overlay it only shows while the mouse is over it.
+  the diagnostics tap test while those are open). It needs the Spotify account, not the PC-only source.
 - **Permission:** controls use the `user-modify-playback-state` scope. A login saved before this feature lacks it, so the first
   press sends you through the Spotify login once more. Spotify only allows playback control for Premium accounts and when a
   device is active; if it refuses, the reason shows above the bar and the press is undone.
@@ -107,7 +104,7 @@ Diagnostics (`D`) shows which source and player are in use.
   lines above and three below, gliding up on each new line; `M` switches it (and Kinetic) between word-by-word fill and the whole line lit.
   Kinetic slams each word in exactly when it is sung: the loudest word of a line is the biggest (a guess from word length and how long it
   is held, since there is no audio), and lines that repeat in the song (the chorus) are drawn bigger. Your pick is remembered separately for window,
-  fullscreen and overlay; the overlay starts on Karaoke. Settings has a "Random scene each song" option; with it on, `V`
+  fullscreen. Settings has a "Random scene each song" option; with it on, `V`
   changes only the current song. Scenes are pure functions of the playback position, so seek and pause never leave stale animation.
   Ten more: *Handwriting* (a pen writes each word, a reveal rather than true strokes), *Rain* (words fall and land), *Lanterns* (words rise on glowing paper
   lanterns), *Neon*, *Typewriter*, *Ribbon* (words ride a wave; its liveliness comes from line pace and chorus, not audio), *Orbit* (words circle the album cover),
@@ -117,12 +114,16 @@ Diagnostics (`D`) shows which source and player are in use.
   font (system fonts only), background stars, reduce motion, corner title/art, global offset, lyric cache, disconnect.
 - **Album colors** (off by default): two or three colors are read from the 64 px cover; grey or
   black-and-white covers fall back to the chosen theme. Colors are lifted so they always glow on black.
-- **Glow and Background effects (Settings → Sky, two sliders):** the background is plain black by default. **Background effects** (0–100, default 0) fades in a faint nebula, drifting dust stars and twinklers, and from 50 up a dim shooting star in the gap after a line ends (gaps of 0.4 s or more). **Glow** (0–100, default 25) sets the small glow on the star of the word being sung, and the soft light in a few scenes (Neon, Lanterns, Orbit, Rain, Ribbon, Terminal, Ink, emotion words); 0 removes it. Text and lines stay crisp. Background effects are always off in Paper and the transparent overlay, and with reduce motion nothing drifts or streaks.
+- **Night sky (Settings → Sky: Off, Stars, Stars + comets; default Stars + comets):** one shared background module (`web/js/sky.js`) behind every scene except Paper. It is pure #000000 (no gradient, nebula, blur, glow or pulsing): 160 tiny sharp stars of 1 or 2 pixels on whole device pixels, each twinkling at its own speed, drifting very slowly to the left, and dim; and, in Stars + comets, one comet at a time every 6 to 15 seconds at a random angle, with a bright head and a thin tail of six short segments, dimmer over the lyric area. With reduce motion the stars stand still and twinkle very slowly and there are no comets. It is driven by the frame clock with a clamped delta time, and allocates nothing per frame. **Glow** (0–100, default 25, Settings) sets the small glow on the star of the word being sung and the soft light in a few scenes; 0 removes it. The old Background effects slider and its nebula, dust and shooting stars are gone (a saved value is ignored). The Beat pulse no longer lights the background; the scenes' stars still swell with it.
 - **Emotion words:** English words about fire, night, love, water and sun get a small coloured glow in Constellation, Karaoke, Kinetic, Stack, Neon and Lanterns. Other languages get no glow. Each of these three can be switched off in Settings.
   While paused it repaints at about 20 fps; with reduce motion on (default follows Windows "Animation effects")
   nothing moves and a paused sky does not repaint at all.
-- **Romanized and translated lyrics (Settings → Lyric text):** a small caption under the lyrics shows the current line in Latin letters for Korean, Japanese kana, Russian and Greek (built in, offline, on by default). Kanji and Chinese characters, Hindi, Arabic and Thai are not romanized. An optional translation (off by default) looks each song up once at the free MyMemory service (api.mymemory.translated.net, no key) and keeps it on disk; **this sends the lyric text to that service**, and if it is slow, limited or down the lyrics simply show without it. The caption is a line under the lyrics, not under each word, and is hidden in the mini widget.
-- **Beat pulse (desktop app, Settings, off by default):** the glow swells from the middle of the sky on each beat and the Constellation stars swell with it. Lyrics never move with it, so word timing is untouched. It listens to the sound your PC is playing (Windows system audio output, through Electron; no extra program or key), keeps only a loudness-change number every 10 ms, and records and sends nothing. Windows may show a screen-capture indicator while it is on, because that is how Windows shares its audio. It finds a steady tempo of 60 to 180 BPM from the last 8 seconds, so it needs a few seconds after a song starts, may read a fast song at half speed (every second beat), and shows nothing when the music has no steady beat (ambient, free tempo) or when nothing is playing. Settings shows "Beat found: about N BPM". Off with reduce motion, in Paper, and in the overlay's transparent sky. `npm run check:beat` plays a drum loop through your speakers for about 20 seconds and checks the app finds its tempo.
+- **Emojis (Settings, on by default, Kinetic scene):** about 80 word groups (love, fire, night, rain, sun, heart, dance, etc., matched ignoring case and by simple stem) get an emoji that pops in on the same frame as its word and never delays it; at most 2 a line. With reduce motion it just sits there. Drawn with Segoe UI Emoji at whole-pixel sizes.
+- **Constellation links:** a link is only ever drawn between stars of the same line, and once a line has faded out all of its stars, links and labels are removed; a repeated (chorus) line gets its own fresh stars each time.
+- **Lyrics lookup:** the app waits for the track info to settle (and for a real length) before the first lookup, then retries at 2 s and 5 s before showing "Lyrics not found"; "Searching lyrics…" shows meanwhile. A timeout or server error is never saved, an answer for a previous song is ignored, and lyrics that arrive late are shown at the right position without a restart.
+- **Album colors (Settings, off by default):** each track's 2–3 dominant bright colors are cached by track ID; a cover that cannot be read falls back to gold with one console warning, and is asked for again once.
+- **Romanized and translated lyrics (Settings → Lyric text):** a small caption under the lyrics shows the current line in Latin letters for Korean, Japanese kana, Russian and Greek (built in, offline, on by default). Kanji and Chinese characters, Hindi, Arabic and Thai are not romanized. An optional translation (off by default) looks each song up once at the free MyMemory service (api.mymemory.translated.net, no key) and keeps it on disk; **this sends the lyric text to that service**, and if it is slow, limited or down the lyrics simply show without it. The caption is a line under the lyrics, not under each word,.
+- **Beat pulse (desktop app, Settings, off by default):** the glow swells from the middle of the sky on each beat and the Constellation stars swell with it. Lyrics never move with it, so word timing is untouched. It listens to the sound your PC is playing (Windows system audio output, through Electron; no extra program or key), keeps only a loudness-change number every 10 ms, and records and sends nothing. Windows may show a screen-capture indicator while it is on, because that is how Windows shares its audio. It finds a steady tempo of 60 to 180 BPM from the last 8 seconds, so it needs a few seconds after a song starts, may read a fast song at half speed (every second beat), and shows nothing when the music has no steady beat (ambient, free tempo) or when nothing is playing. Settings shows "Beat found: about N BPM". Off with reduce motion, and in Paper. `npm run check:beat` plays a drum loop through your speakers for about 20 seconds and checks the app finds its tempo.
 - **Save a picture or clip:** `X` (or the Picture button) saves the sky as a PNG; `R` (Clip) records the next 10 seconds as a WebM video. Only the sky is saved, not the buttons. Nothing leaves your PC.
 - **History (`H`):** the songs you played, newest first, each with a small picture of its constellation and how many times it was played (a song counts after 8 seconds with lyrics). Kept on this PC (up to 80); "Clear history" empties it.
 - **Performance:** Diagnostics (`D`) → Rendering shows paints per second, paint cost and late frames.
@@ -173,10 +174,13 @@ tools/lrclib-probe.mjs    calls the real LRCLIB for five well-known songs and pr
 tools/nowplaying-cases.mjs the no-lyrics scene for not found, service error, instrumental and not-timed, with pictures (node --experimental-websocket tools/nowplaying-cases.mjs OUT_DIR)
 tools/glow-shots.mjs      before/after pictures of blur and glow at 1080p and 200% scaling (node --experimental-websocket tools/glow-shots.mjs OUT_DIR)
 tools/beat-check.mjs      plays a drum loop and checks the desktop app finds its tempo (npm run check:beat; needs speakers)
-tools/electron-check.mjs  launches the real desktop app in each display style; checks always-on-top and click-through (npm run check:electron)
-web/js/background.js      nebula, drifting and twinkling background stars
-web/js/nebula.js          the drifting nebula glow
-web/js/shooting-stars.js  shooting stars in line gaps
+tools/fix-shots.mjs       screenshots of one scene at chosen times, size and settings (node --experimental-websocket tools/fix-shots.mjs OUT_DIR --scene kinetic --at 4.2 --size 1920x1080@2)
+tools/frame-perf.mjs      frame time of a scene over a stretch of playback (--scene orbit --seconds 60 --set JSON)
+tools/album-check.mjs     five fake covers of different colors; checks each tints the sky in several scenes
+tools/lyrics-retry-check.mjs  fake lyrics service that fails once, twice, is slow, or has nothing; checks the search-and-retry behavior
+tools/electron-check.mjs  launches the real desktop app in each display style; checks the window and fullscreen styles (npm run check:electron)
+web/js/sky.js             the shared black sky: twinkling stars and comets
+web/js/lyrics/lookup.js   waits for stable track info, retries 2 s and 5 s, never saves a timeout (pure)
 web/js/beat.js             finds the tempo and beat from onset strengths (pure)
 web/js/audio-beat.js       listens to the system audio in the desktop app and feeds beat.js
 web/js/romanize.js        offline romanization (Hangul, kana, Cyrillic, Greek)

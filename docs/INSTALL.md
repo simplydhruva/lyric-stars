@@ -50,15 +50,6 @@ account when music plays elsewhere, then other players on this PC. Diagnostics (
 |---|---|---|
 | Window | Default | Normal use |
 | Fullscreen | `F` | Parties, a TV |
-| Overlay | `O` | Lyrics floating over a game or video |
-
-![The overlay over another window](images/overlay.png)
-
-The overlay always stays on top and has a see-through background:
-
-- Drag it by the gold bar at the top, and resize it from the edges.
-- In Settings → **Desktop app**, you can set its opacity and how dark its background is.
-- **Click-through** sends your clicks to the window underneath. Press **Ctrl+Alt+K** to turn it on or off, since the overlay can't be clicked while it's on.
 
 Each style remembers its own size and place.
 
@@ -69,20 +60,17 @@ Each style remembers its own size and place.
 | Key | Does |
 |---|---|
 | `F` | Fullscreen on/off |
-| `O` | Overlay on/off |
 | `M` | Word by word / line by line |
 | `S` | Settings |
 | `[` `]` | Lyrics earlier/later for this song |
 | `Ctrl+Alt+L` | Show or hide Lyric Stars (works from any app) |
-| `Ctrl+Alt+K` | Overlay click-through on/off (works from any app) |
 
 ## Tray icon
 
 The gold star by the clock gives you:
 
 - Show or Hide
-- the three styles
-- Click-through
+- the two styles
 - Start with Windows
 - Open to tray
 - Check for updates

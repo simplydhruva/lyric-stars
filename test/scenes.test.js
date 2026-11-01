@@ -16,19 +16,19 @@ test('scene ids are unique and every display mode has a valid default', () => {
   for (const m of DISPLAY_MODES) assert.ok(SCENE_IDS.includes(DEFAULT_SCENE[m]), m);
 });
 
-test('the overlay defaults to karaoke; window and fullscreen to the constellation', () => {
-  assert.equal(DEFAULT_SCENE.overlay, 'karaoke');
+test('window and fullscreen default to the constellation; there is no overlay mode', () => {
+  assert.deepEqual(DISPLAY_MODES, ['window', 'fullscreen']);
   assert.equal(DEFAULT_SCENE.window, 'constellation');
   assert.equal(DEFAULT_SCENE.fullscreen, 'constellation');
 });
 
 test('each display mode has its own settings key', () => {
-  assert.deepEqual(DISPLAY_MODES.map(sceneSettingKey), ['sceneWindow', 'sceneFullscreen', 'sceneOverlay']);
+  assert.deepEqual(DISPLAY_MODES.map(sceneSettingKey), ['sceneWindow', 'sceneFullscreen']);
 });
 
 test('validScene keeps known ids and falls back to the mode default', () => {
   assert.equal(validScene('karaoke', 'window'), 'karaoke');
-  assert.equal(validScene('gone', 'overlay'), 'karaoke');
+  assert.equal(validScene('gone', 'overlay'), 'constellation');
   assert.equal(validScene(undefined, 'window'), 'constellation');
   assert.equal(validScene(null, 'fullscreen'), 'constellation');
 });

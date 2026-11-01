@@ -1,5 +1,5 @@
 // Neon sign: the line is a row of glass tubes. Unlit tubes are a faint outline; each word buzzes on with a short
-// flicker when it is sung and then burns steady, with a soft glow on the wall behind. The previous line stays up
+// flicker when it is sung and then burns steady. The previous line stays up
 // above, switched off. Pure function of the playback position.
 import { createFitCache } from './line-draw.js';
 import { drawEmotion } from './emotion.js';
@@ -70,13 +70,7 @@ export function createNeon() {
       const line = lines[index];
       const midY = h * 0.5;
       const cur = line.words.length ? cache.fit(frame, index, baseFont, maxW) : null;
-      const sung = cur ? line.words.filter((x) => shownAt(x, line, mode) <= pos).length / line.words.length : 0;
-      // the glow on the wall grows as more of the line lights up
-      const wall = ctx.createRadialGradient(w / 2, midY, 0, w / 2, midY, Math.max(w, h) * 0.6);
-      wall.addColorStop(0, rgba(theme.star, (0.06 + 0.08 * sung) * quiet * ((frame.glow ?? 0.25) * 2)));
-      wall.addColorStop(1, rgba(theme.star, 0));
-      ctx.fillStyle = wall;
-      ctx.fillRect(0, 0, w, h);
+      // (no glow on the wall: the background is pure black)
 
       if (index > 0 && lines[index - 1].words.length) {
         const f = cache.fit(frame, index - 1, baseFont, maxW);

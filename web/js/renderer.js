@@ -3,23 +3,11 @@
 // object per paint. Everything drawn is a pure function of the playback position, so seeking,
 // pausing and resuming never leave stale animation behind.
 import { lineIndexAt } from './lyrics/lrc.js';
-import { Background } from './background.js';
+import { Sky, SKY_MODES, DEFAULT_SKY } from './sky.js';
 import { makeTheme, THEMES, fontCss } from './theme.js';
 import { createScene, SCENE_IDS } from './scenes/index.js';
 import { drawFlash, flashing } from './sync-flash.js';
 import { setArtListener } from './scenes/art.js';
-import { NebulaGlow } from './nebula.js';
-import { drawShootingStars, streaksAt } from './shooting-stars.js';
-
-// A soft glow that swells from the middle of the sky on each beat. Cheap: one gradient.
-function drawBloom(ctx, w, h, color, beat) {
-  const r = Math.max(w, h) * 0.55;
-  const g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, r);
-  g.addColorStop(0, `rgba(${color[0]},${color[1]},${color[2]},${0.13 * beat})`);
-  g.addColorStop(1, `rgba(${color[0]},${color[1]},${color[2]},0)`);
-  ctx.fillStyle = g;
-  ctx.fillRect(0, 0, w, h);
-}
 
 const IDLE_FRAME_MS = 50; // when only the background moves, 20 frames a second is plenty
 
@@ -29,10 +17,9 @@ export class Renderer {
     this.ctx = canvas.getContext('2d');
     this.theme = makeTheme(THEMES.gold.base);
     this.fontFamily = fontCss('segoe');
-    this.background = new Background();
-    this.nebula = new NebulaGlow();
+    this.sky = new Sky();
     this.beat = null; // () => 0..1, the beat pulse (audio-beat.js), or null
-    this.opts = { reduceMotion: false, backgroundEffects: 0, glow: 25, transparent: false, palette: null };
+    this.opts = { reduceMotion: false, sky: DEFAULT_SKY, glow: 25, palette: null };
     this.lastDrawAt = 0;
     this.timeline = null;
     this.seed = '';
@@ -49,7 +36,7 @@ export class Renderer {
     });
   }
 
-  // theme: from theme.js; font: a FONTS key; transparent: for the overlay (no black, no background);
+  // theme: from theme.js; font: a FONTS key;
   // spread, chaos: 0..100; palette: the album colors, or null.
   configure({ theme, font, spread, chaos, ...opts }) {
     if (spread != null && chaos != null) {
@@ -104,15 +91,15 @@ export class Renderer {
   draw(pos, { mode = 'word', playing = true, quiet = false, now = performance.now(), scene = this.sceneId, displayMode = 'window' } = {}) {
     const resized = this._resize();
     const { w, h, dpr } = this.size;
-    const { reduceMotion, transparent } = this.opts;
-    // Background effects (0..100): nebula, drifting dust, twinklers and shooting stars. 0 leaves plain black.
-    const fx = Math.max(0, Math.min(1, (this.opts.backgroundEffects ?? 0) / 100));
-    const sky = fx > 0 && !transparent;
+    const { reduceMotion } = this.opts;
+    // The shared sky (Settings → Sky): off, stars, or stars and comets, on pure black. Paper is a cream sheet and has none.
+    const skyMode = SKY_MODES.includes(this.opts.sky) ? this.opts.sky : DEFAULT_SKY;
     this.sceneId = SCENE_IDS.includes(scene) ? scene : SCENE_IDS[0];
     const flashOn = flashing(now, this.flashState?.at);
     const frameKey = `${flashOn ? 'f' + Math.round(now) : ''}|${Math.round(pos)}|${mode}|${quiet}|${this.sceneId}|${displayMode}|${w}x${h}@${dpr}`;
+    const skyOn = skyMode !== 'off' && scene !== 'paper';
     if (!resized && !playing && frameKey === this.lastFrameKey) {
-      const moving = sky && this.background.animating(now, reduceMotion);
+      const moving = skyOn && this.sky.animating(skyMode);
       if (!moving || now - this.lastDrawAt < IDLE_FRAME_MS) return false;
     }
     this.lastFrameKey = frameKey;
@@ -120,25 +107,11 @@ export class Renderer {
 
     const ctx = this.ctx;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    if (transparent) ctx.clearRect(0, 0, w, h);
-    else {
-      ctx.fillStyle = '#000';
-      ctx.fillRect(0, 0, w, h);
-    }
-    // Paper is a cream sheet: the sky effects would only be wasted work behind it.
-    const skyFx = sky && this.sceneId !== 'paper';
-    const calm = !transparent && this.sceneId !== 'paper'; // where the beat bloom may show
-    // The beat pulse: only while it is on and something is playing. Lyrics never move with it, only the glow does.
-    const beat = this.beat && this.opts.beatPulse && !reduceMotion && playing && calm ? this.beat(now) : 0;
-    if (skyFx && w && h) {
-      this.nebula.prepare(this.theme, now);
-      this.nebula.draw(ctx, w, h, now, reduceMotion, fx);
-    }
-    if (beat > 0.01 && w && h) drawBloom(ctx, w, h, this.theme.star, beat);
-    if (sky && w && h) {
-      this.background.prepare(w, h, dpr, this.theme, now);
-      this.background.draw(ctx, w, h, now, reduceMotion, fx);
-    }
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0, 0, w, h);
+    // The beat pulse: only while it is on and something is playing. Lyrics never move with it; the scenes' stars swell.
+    const beat = this.beat && this.opts.beatPulse && !reduceMotion && playing && this.sceneId !== 'paper' ? this.beat(now) : 0;
+    if (skyOn) this.sky.draw(ctx, w, h, dpr, now, { mode: skyMode, reduceMotion, quiet });
     const lines = this.timeline;
     if (!lines || !lines.length || !w || !h) return true;
 
@@ -171,12 +144,9 @@ export class Renderer {
     f.previewNext = this.opts.previewNext !== false;
     f.songMap = this.opts.songMap !== false;
     f.emotion = this.opts.emotion !== false;
+    f.emojis = this.opts.emojis !== false;
     f.beat = beat;
     f.glow = Math.max(0, Math.min(1, (this.opts.glow ?? 25) / 100));
-    // Shooting stars cross the sky between lines, behind the lyrics. Never with reduce motion.
-    if (skyFx && !reduceMotion && index >= 0 && fx >= 0.5) {
-      drawShootingStars(ctx, streaksAt(lines, index, pos, w, h), this.theme, quiet);
-    }
     this._scene(this.sceneId).draw(f);
     if (flashOn) drawFlash(ctx, w, h, now, this.flashState, this.theme.star, reduceMotion);
     return true;

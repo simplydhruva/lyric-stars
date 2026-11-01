@@ -103,6 +103,14 @@ export class FakeSpotify {
     };
   }
 
+  // `delayMs: n` on a song: its lyrics requests take that long to answer.
+  delayFor(url) {
+    const u = new URL(url);
+    if (u.host !== 'lrclib.net') return 0;
+    const name = u.searchParams.get('track_name') || u.searchParams.get('q') || '';
+    return this.songs.find((s) => s.type === 'track' && name.includes(s.name))?.delayMs || 0;
+  }
+
   // Answers one intercepted request: returns { status, body } or null to let it through.
   answer(method, url) {
     const u = new URL(url);
@@ -134,6 +142,11 @@ export class FakeSpotify {
       const name = u.searchParams.get('track_name') || u.searchParams.get('q') || '';
       const song = this.songs.find((s) => s.type === 'track' && name.includes(s.name));
       if (song?.service === 'error') return { status: 502, body: 'error code: 502' };
+      // `failAttempts: n`: the first n lookups (each starts with a /get that carries the album) fail with a server error.
+      if (song?.failAttempts) {
+        if (u.pathname.endsWith('/get') && (u.searchParams.has('album_name') || !song.album)) song.attempts = (song.attempts || 0) + 1;
+        if ((song.attempts || 0) <= song.failAttempts) return { status: 502, body: 'error code: 502' };
+      }
       if (u.pathname.endsWith('/search') && !song?.instrumental && !song?.plain) return { status: 200, body: [] };
       if (song?.instrumental) return { status: 200, body: { id: 2, trackName: song.name, artistName: song.artist, albumName: song.album, duration: song.duration_ms / 1000, instrumental: true, plainLyrics: '', syncedLyrics: null } };
       if (song?.plain) return { status: 200, body: { id: 3, trackName: song.name, artistName: song.artist, albumName: song.album, duration: song.duration_ms / 1000, instrumental: false, plainLyrics: song.plain, syncedLyrics: null } };
@@ -149,7 +162,7 @@ export class FakeSpotify {
 
 // Intercept the app's Spotify and lyrics requests in this browser session.
 export async function installFake(session, fake) {
-  session.on('Fetch.requestPaused', (p) => {
+  session.on('Fetch.requestPaused', async (p) => {
     const a = fake.answer(p.request.method, p.request.url);
     const cors = [
       { name: 'Access-Control-Allow-Origin', value: '*' },
@@ -160,6 +173,8 @@ export async function installFake(session, fake) {
       return session.send('Fetch.fulfillRequest', { requestId: p.requestId, responseCode: 204, responseHeaders: cors });
     }
     if (!a) return session.send('Fetch.continueRequest', { requestId: p.requestId });
+    const delay = fake.delayFor(p.request.url);
+    if (delay) await new Promise((r) => setTimeout(r, delay));
     return session.send('Fetch.fulfillRequest', {
       requestId: p.requestId,
       responseCode: a.status,

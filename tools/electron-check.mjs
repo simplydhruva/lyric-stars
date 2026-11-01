@@ -1,8 +1,8 @@
-// Launches the real desktop app (electron/main.mjs) three times, once per display style, and checks it.
+// Launches the real desktop app (electron/main.mjs) twice, once per display style, and checks it.
 //   node --experimental-websocket tools/electron-check.mjs [OUT_DIR]
 // It uses its own port (5210), its own data folder and the demo song, so your real app and settings are untouched.
 // The page is driven over Electron's remote-debugging port, the main process over its inspector port.
-// Windows flags (always on top, click-through) are read straight from the window with the Win32 API.
+// Windows flags (always on top) are read straight from the window with the Win32 API.
 import { spawn, execFileSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -50,7 +50,7 @@ function cdp(url) {
   return { send, js, close: () => ws.close() };
 }
 
-// WS_EX_TOPMOST = 0x8, WS_EX_TRANSPARENT = 0x20 (what click-through sets), WS_EX_LAYERED = 0x80000.
+// WS_EX_TOPMOST = 0x8, WS_EX_TRANSPARENT = 0x20 (not used now, kept for the topmost check), WS_EX_LAYERED = 0x80000.
 const PS = `
 param([long]$h)
 Add-Type -Namespace W -Name N -MemberDefinition '[DllImport("user32.dll")] public static extern long GetWindowLongPtr(System.IntPtr h, int i); [DllImport("user32.dll")] public static extern bool IsWindowVisible(System.IntPtr h);'
@@ -113,21 +113,6 @@ async function run(style) {
     } else if (style === 'window') {
       check('window: normal framed window, not full screen', !info.full && info.bounds.width < info.display.width);
       check('window: not forced on top', !info.top);
-    } else {
-      check('overlay: always on top (Electron)', info.top);
-      const f = winFlags(info.handle);
-      check('overlay: always on top (Windows topmost flag)', f.topmost);
-      check('overlay: frameless transparent window', info.content.width === info.bounds.width && info.content.height === info.bounds.height, `bounds ${info.bounds.width}x${info.bounds.height}`);
-      check('overlay: click-through starts off', !f.clickThrough);
-      await page.js(`window.lyricStars.setOverlay({ clickThrough: true })`);
-      await sleep(600);
-      const on = winFlags(info.handle);
-      check('overlay: click-through on makes clicks pass through (Windows transparent flag)', on.clickThrough && on.topmost, JSON.stringify(on));
-      const moved = await page.js(`window.lyricStars.info().overlay.clickThrough`);
-      check('overlay: the page is told click-through is on', moved === true);
-      await page.js(`window.lyricStars.setOverlay({ clickThrough: false })`);
-      await sleep(600);
-      check('overlay: click-through off again', !winFlags(info.handle).clickThrough);
     }
     if (out) {
       const shot = await page.send('Page.captureScreenshot', { format: 'png' });
@@ -148,6 +133,6 @@ async function run(style) {
   }
 }
 
-for (const style of ['window', 'fullscreen', 'overlay']) await run(style);
-console.log(bad ? `\nelectron: ${bad} problems` : '\nelectron: all three display styles opened and behaved');
+for (const style of ['window', 'fullscreen']) await run(style);
+console.log(bad ? `\nelectron: ${bad} problems` : '\nelectron: both display styles opened and behaved');
 process.exit(bad ? 1 : 0);

@@ -249,62 +249,6 @@ html[data-scene="paper"] #corner { color: rgba(40, 34, 52, 0.75); }
 #corner img { width: 40px; height: 40px; border-radius: 4px; opacity: 0.8; flex: none; }
 #corner span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* ---- desktop overlay style: transparent, frameless, always on top ---- */
-html.overlay, html.overlay body { background: transparent; }
-html.overlay body {
-  background: rgba(0, 0, 0, var(--backdrop, 0.35));
-  border-radius: 14px;
-  transition: background 300ms ease;
-}
-html.overlay #controls { bottom: 10px; font-size: 12px; }
-html.overlay #controls button { padding: 4px 11px; }
-html.overlay .panel { top: 34px; max-height: calc(100vh - 44px); }
-#grip {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: 26px;
-  -webkit-app-region: drag;
-  cursor: move;
-  transition: opacity 400ms ease;
-}
-#grip::after {
-  content: "";
-  position: absolute;
-  left: 50%;
-  top: 9px;
-  width: 44px;
-  height: 4px;
-  margin-left: -22px;
-  border-radius: 2px;
-  background: var(--gold-dim);
-}
-body.controls-hidden #grip { opacity: 0; }
-/* Click-through: the mouse goes to the window below, so nothing here is clickable. */
-html.click-through #grip, html.click-through #controls { display: none; }
-
-/* ---- mini widget: the cover and one line of lyrics in a small corner window ---- */
-#mini-art { display: none; }
-html.mini #mini-art {
-  display: block;
-  position: fixed;
-  left: 14px;
-  top: 50%;
-  width: 84px;
-  height: 84px;
-  margin-top: -42px;
-  border-radius: 8px;
-  object-fit: cover;
-  z-index: 1;
-}
-html.mini #mini-art[hidden] { display: none; }
-html.mini #sky { left: 108px; width: calc(100% - 108px); }
-html.mini #chips, html.mini #corner, html.mini #np, html.mini #player, html.mini #spike, html.mini #settings, html.mini #editor, html.mini #controls { display: none !important; }
-html.mini body { border-radius: 12px; }
-html.mini #grip { height: 100%; }
-html.mini #grip::after { display: none; }
-
 /* ---- caption: romanized and translated line under the lyrics ---- */
 #caption {
   position: fixed;
@@ -322,7 +266,6 @@ html.mini #grip::after { display: none; }
 #caption .trans { font-size: clamp(12px, 1.7vw, 17px); color: rgba(220, 215, 205, 0.72); font-style: italic; }
 html[data-scene="paper"] #caption { text-shadow: none; }
 html[data-scene="paper"] #caption .roman, html[data-scene="paper"] #caption .trans { color: rgba(40, 34, 52, 0.8); }
-html.mini #caption { display: none; }
 
 /* ---- history panel ---- */
 .hist { list-style: none; margin: 0; padding: 0; }
@@ -332,4 +275,3 @@ html.mini #caption { display: none; }
 .hist-text { display: flex; flex-direction: column; min-width: 0; }
 .hist-text b, .hist-text span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .hist-when { font-size: 12px; color: var(--muted); }
-html.mini #history { display: none; }

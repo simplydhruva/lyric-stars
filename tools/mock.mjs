@@ -57,7 +57,7 @@ async function main() {
       check('seek back: still drawing', (await peek(s)).lit > 5);
 
       fake.jump(1, 3000);
-      await waitFor('no-lyrics screen', async () => (await peek(s)).card, 8000);
+      await waitFor('no-lyrics screen', async () => (await peek(s)).card, 20000); // the lookup retries after 2 s and 5 s first
       const noLy = await peek(s);
       check('no-lyrics song shows the now-playing card', noLy.card && /Silent Track/.test(noLy.text), noLy.text);
 

@@ -88,22 +88,15 @@ export function waveY(x, pos, amplitude) {
   return amplitude * (Math.sin(x * 7 + pos * 0.0016) + 0.5 * Math.sin(x * 13 - pos * 0.0011));
 }
 
-// Orbit: which word is at the front. `c` is a fractional word index: the ring turns to bring the word being
-// sung to the front over about 450 ms. Before the first word it rests on the first word.
-export function orbitCentre(words, pos, still, mode) {
-  if (mode === 'line') return 0;
-  let cur = -1;
-  for (let i = 0; i < words.length; i++) if (words[i].start <= pos) cur = i;
-  if (cur < 0) return 0;
-  if (still || cur === 0) return cur;
-  return cur - 1 + easeInOut((pos - words[cur].start) / 450);
-}
-
 // Where a word sits on the orbit: angle 0 is the front. x in -1..1, y in -1..1 (front is positive),
 // depth 0 (far side) to 1 (front).
-export function orbitSpot(i, c, n) {
+// Pass `into` (an old result) to reuse its object instead of allocating a new one every frame.
+export function orbitSpot(i, c, n, into = {}) {
   const theta = ((i - c) * 2 * Math.PI) / Math.max(n, 1);
-  return { x: Math.sin(theta), y: Math.cos(theta), depth: (Math.cos(theta) + 1) / 2 };
+  into.x = Math.sin(theta);
+  into.y = Math.cos(theta);
+  into.depth = (Math.cos(theta) + 1) / 2;
+  return into;
 }
 
 // A card sliding in or out: 0 settled, 1 fully away.

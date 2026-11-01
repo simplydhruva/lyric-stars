@@ -10,7 +10,7 @@ test('redact hides anything that looks like a credential, at any depth', () => {
 test('report: app state without secrets, recent errors kept', () => {
   recordError('lyrics: service-down (502)');
   const app = {
-    desktop: { version: '0.9.0', style: 'overlay', overlay: { opacity: 0.8 } },
+    desktop: { version: '0.9.0', style: 'window' },
     playback: { kind: 'track', isPlaying: true, positionMs: 1234.6, player: 'Spotify', token: 'leak?' },
     track: { title: 'Yellow', artist: 'Coldplay', album: 'Parachutes', durationMs: 266773, key: 'spotify:1' },
     lyrics: { status: 'synced', result: { record: { id: 42, duration: 267 } } },

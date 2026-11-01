@@ -9,7 +9,7 @@
 //   prevLine, nextLine      the neighbouring lines, or null
 //   theme, palette          colors for this song: theme.star/core/label are [r, g, b]; palette is the album colors or null
 //   fontFamily              CSS font stack chosen in settings
-//   displayMode             'window' | 'fullscreen' | 'overlay'
+//   displayMode             'window' | 'fullscreen'
 //   mode                    'word' | 'line' (M: word by word or line by line; the stack and kinetic scenes follow it too)
 //   reduceMotion, playing, quiet
 //   seed, spread, chaos     the sky's layout inputs (constellation)
@@ -49,10 +49,10 @@ export const SCENES = [
 ];
 
 export const SCENE_IDS = SCENES.map((s) => s.id);
-export const DISPLAY_MODES = ['window', 'fullscreen', 'overlay'];
+export const DISPLAY_MODES = ['window', 'fullscreen'];
 
 // What each display mode shows until the user picks something else.
-export const DEFAULT_SCENE = { window: 'constellation', fullscreen: 'constellation', overlay: 'karaoke' };
+export const DEFAULT_SCENE = { window: 'constellation', fullscreen: 'constellation' };
 
 // The settings key that remembers the choice for a display mode.
 export const sceneSettingKey = (displayMode) => `scene${displayMode[0].toUpperCase()}${displayMode.slice(1)}`;

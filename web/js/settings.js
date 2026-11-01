@@ -40,14 +40,13 @@ const DEFAULTS = {
   mode: 'word', // 'word' | 'line'
   sceneWindow: 'constellation', // which scene each display mode shows (V cycles it); see scenes/index.js
   sceneFullscreen: 'constellation',
-  sceneOverlay: 'karaoke',
   sceneRandom: false, // pick a different scene for every song
   theme: 'gold', // 'gold' | 'ice' | 'rose' | 'custom'
   customColor: '#f4c76b',
   albumColors: false, // tint each song's sky from its album art
   font: 'segoe', // a key of FONTS in theme.js
   glow: 25, // 0..100: the small glow on the star of the word being sung (and the soft light in some scenes)
-  backgroundEffects: 0, // 0..100: nebula, drifting dust and shooting stars behind the lyrics. 0 = plain black
+  sky: 'comets', // behind every scene: 'off' | 'stars' | 'comets' (stars and a comet every 6 to 15 s), on pure black
   spread: 100, // 0..100: how much of the screen each line's stars may use
   chaos: 50, // 0..100: extra criss-cross links and longer jumps between stars
   previewNext: true, // constellation: faint dots show where the next line's stars will appear
@@ -57,6 +56,7 @@ const DEFAULTS = {
   translateTo: 'en',
   beatPulse: false, // desktop app: stars and glow pulse to the beat of what the PC is playing (listens to system audio)
   emotion: true, // love, fire, night, rain and sun words get a small coloured glow (six scenes)
+  emojis: true, // kinetic: an emoji appears next to words like love, fire and night (at most 2 a line)
   songMap: true, // constellation: when the last line is done, every star fades together into one song map
   fullFrameRate: false, // draw on every refresh of a 120/144 Hz screen instead of about 60 times a second
   get reduceMotion() {
@@ -64,6 +64,18 @@ const DEFAULTS = {
   },
   cornerInfo: 'off', // 'off' | 'title' | 'art'
 };
+
+// Saved settings of removed features (the overlay's scene choice, Background effects) are dropped, never read.
+const REMOVED = ['sceneOverlay', 'backgroundEffects'];
+try {
+  const saved = store.get('ls.settings');
+  if (saved && REMOVED.some((k) => k in saved)) {
+    for (const k of REMOVED) delete saved[k];
+    store.set('ls.settings', saved);
+  }
+} catch {
+  // storage unavailable: nothing to clean
+}
 
 export const settings = {
   get(key) {

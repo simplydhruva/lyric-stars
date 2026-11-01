@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   clamp, hash, written, fallDuration, fallProgress, landBounce, lanternRise, lanternAlpha, neonFlicker,
-  typedChars, cursorOn, lineEnergy, orbitCentre, orbitSpot, slideIn, slideOut, inkAlpha, shownAt,
+  typedChars, cursorOn, lineEnergy, orbitSpot, slideIn, slideOut, inkAlpha, shownAt,
 } from '../web/js/scenes/motion.js';
 
 const line = { time: 1000, end: 3000, words: [{ text: 'a', start: 1000, end: 1500 }, { text: 'bb', start: 1500, end: 2500 }] };
@@ -73,11 +73,7 @@ test('ribbon energy: faster and chorus lines are livelier, always 0..1', () => {
   assert.equal(clamp(lineEnergy(fast, true), 0, 1), lineEnergy(fast, true));
 });
 
-test('orbit: the sung word turns to the front; the ring is a circle', () => {
-  const words = line.words;
-  assert.equal(orbitCentre(words, 0, false, 'word'), 0);
-  assert.equal(orbitCentre(words, 1500 + 450, false, 'word'), 1);
-  assert.equal(orbitCentre(words, 1501, true, 'word'), 1);
+test('orbit: the ring is a circle', () => {
   const front = orbitSpot(2, 2, 6);
   assert.ok(Math.abs(front.x) < 1e-9 && front.depth === 1);
   const back = orbitSpot(5, 2, 6);

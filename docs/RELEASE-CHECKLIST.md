@@ -53,12 +53,11 @@ Run this before every release that goes to friends. **Auto** rows are scripts; *
 
 | Check | Target | How |
 | --- | --- | --- |
-| Frame rate in window, fullscreen and overlay | 60 paints/s | Auto: `soak6.mjs` reads Diagnostics → Rendering |
+| Frame rate in window and fullscreen | 60 paints/s | Auto: `soak6.mjs` reads Diagnostics → Rendering |
 | CPU while idle-drawing (paused) | under 5% | Auto: soak |
 | Memory over a two-hour session | under 250 MB | Auto: soak (whole process tree) |
 | Four hours of play, no crash | no crash | Manual, overnight playlist |
 | High-DPI and resize keep the layout on screen | nothing clipped | Manual, at 100% and 150% scaling |
-| Overlay: click-through, opacity, Ctrl+Alt+L and Ctrl+Alt+K | works | Manual |
 | Window size, position, monitor, mode, theme and offsets remembered | restored after restart | Manual |
 | Tray menu: show, hide, mode, quit | works | Manual |
 
