@@ -120,6 +120,16 @@ export class FakeSpotify {
     if (u.host === 'accounts.spotify.com') {
       return { status: 200, body: { access_token: 'fake-access', refresh_token: 'fake-refresh', expires_in: 3600, scope: 'user-read-playback-state user-read-currently-playing user-modify-playback-state' } };
     }
+    if (u.pathname.startsWith('/api/lyrics-alt/')) {
+      // The local server's NetEase backup: songs with `alt` (timed lyrics) or `altError` answer; others find nothing.
+      const name = u.searchParams.get('title') || '';
+      const song = this.songs.find((s) => s.type === 'track' && (name.includes(s.name) || (u.searchParams.get('id') && s.id.replace(/D/g, '') === u.searchParams.get('id'))));
+      if (u.pathname.endsWith('/search')) {
+        if (song?.altError) return { status: 502, body: { error: 'down' } };
+        return { status: 200, body: song?.alt ? [{ id: `ne:${song.id.replace(/D/g, '') || 1}`, trackName: song.name, artistName: song.artist, albumName: song.album, duration: song.duration_ms / 1000 }] : [] };
+      }
+      return { status: 200, body: { syncedLyrics: song?.alt || '', instrumental: false } };
+    }
     if (u.host === 'lrclib.net') {
       const name = u.searchParams.get('track_name') || u.searchParams.get('q') || '';
       const song = this.songs.find((s) => s.type === 'track' && name.includes(s.name));
@@ -158,7 +168,7 @@ export async function installFake(session, fake) {
     });
   });
   await session.send('Fetch.enable', {
-    patterns: ['https://api.spotify.com/*', 'https://accounts.spotify.com/*', 'https://lrclib.net/*'].map((urlPattern) => ({ urlPattern })),
+    patterns: ['https://api.spotify.com/*', 'https://accounts.spotify.com/*', 'https://lrclib.net/*', '*/api/lyrics-alt/*'].map((urlPattern) => ({ urlPattern })),
   });
 }
 

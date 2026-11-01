@@ -2,6 +2,7 @@
 // first artist), then it tries, in order: an exact lookup with the album, an exact lookup without it, a search by
 // title and artist, and a broader search. Every record is duration-checked. Every request is logged.
 import { parseLrc } from './lrc.js';
+import { fetchBackup } from './netease.js';
 import { pickBest, cleanTitle, cleanArtist, rejectReason, DURATION_TOLERANCE_S } from './match.js';
 
 const BASE = 'https://lrclib.net/api';
@@ -62,6 +63,7 @@ function toResult(record, extra = {}) {
       artistName: record.artistName,
       albumName: record.albumName,
       duration: record.duration,
+      ...(record.source ? { source: record.source } : {}),
     },
   };
   if (record.instrumental) return { ...base, status: 'instrumental' };
@@ -85,7 +87,9 @@ export function lookupFor(track) {
 // Resolves with { status: 'synced' | 'plain' | 'instrumental' | 'notfound', ... }. A 'notfound' with `partial: true`
 // means some request failed on the way, so it is not a sure "not found" and must not be saved. Rejects with a
 // LyricsError when nothing could be asked at all.
-export async function fetchLyrics(track, { fetchImpl = globalThis.fetch.bind(globalThis), rejectIds = [], log = defaultLog } = {}) {
+// `useBackup` (default true) allows the NetEase backup (netease.js) when LRCLIB is down or has no timed lyrics;
+// `backupFetch` / `backupBase` are for tests.
+export async function fetchLyrics(track, { fetchImpl = globalThis.fetch.bind(globalThis), rejectIds = [], log = defaultLog, useBackup = true, backupFetch, backupBase } = {}) {
   const q = lookupFor(track);
   log(`looking up "${track.title}" by ${track.artists?.[0] || track.artist} (${q.durationS} s)` + (q.title !== track.title || q.artist !== (track.artists?.[0] || track.artist) ? `, cleaned to "${q.title}" by ${q.artist}` : ''));
 
@@ -131,8 +135,20 @@ export async function fetchLyrics(track, { fetchImpl = globalThis.fetch.bind(glo
     }
   }
 
-  // Nothing timed. Use whatever matched (not timed, or instrumental) if there is any.
+  // Nothing timed from LRCLIB. An instrumental match is final; otherwise try the backup source for timed lyrics.
   const any = fromGet || pickBest([...seen.values()], track, { strict: true, rejectIds });
+  if (any?.instrumental) return toResult(any);
+  if (useBackup) {
+    const fb = backupFetch || (globalThis.location?.origin ? globalThis.fetch.bind(globalThis) : null);
+    const r = await fetchBackup(track, q, { fetchImpl: fb, base: backupBase, rejectIds, log });
+    // The backup saying "nothing" does not count as an answer: if LRCLIB could not be asked, the song was not
+    // really checked, so it stays "service unreachable" rather than "not found".
+    if (!r.ok && fb) failures.push({ kind: 'service-down', message: r.message });
+    if (r.record) {
+      log(`found in the backup source: "${r.record.trackName}" by ${r.record.artistName}`);
+      return toResult(r.record);
+    }
+  }
   if (any) return toResult(any);
 
   // Nothing at all. If no request got a real answer the service could not be asked; if only some failed, this is

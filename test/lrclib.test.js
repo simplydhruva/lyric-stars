@@ -119,3 +119,64 @@ test('rejectReason says why', () => {
   assert.match(rejectReason(rec({ artistName: 'Nobody' }), track), /artist/);
   assert.match(rejectReason(rec({ id: 4 }), track, { rejectIds: [4] }), /marked/);
 });
+
+// ---- backup source (NetEase through the local server) ----
+
+const NE_LRC = '[00:01.000]hello there\n[00:05.500]second line';
+const neCand = (o = {}) => ({ id: 'ne:77', trackName: 'Song', artistName: 'Band', albumName: 'Album', duration: 200, ...o });
+// A scripted backup: handler gets ('search' | 'lyric', params).
+function backup(handler) {
+  const calls = [];
+  const backupFetch = async (url) => {
+    const u = new URL(url);
+    const route = u.pathname.replace('/api/lyrics-alt/', '');
+    calls.push(route);
+    const r = await handler(route, Object.fromEntries(u.searchParams));
+    return { status: r.status, ok: r.status >= 200 && r.status < 300, json: async () => r.body };
+  };
+  return { backupFetch, calls };
+}
+const down = () => service(() => ({ status: 502, body: {} }));
+
+test('with LRCLIB down, the backup supplies timed lyrics (and the credit lines are dropped)', async () => {
+  const b = backup((route) => (route === 'search' ? { status: 200, body: [neCand()] } : { status: 200, body: { syncedLyrics: `[00:00.000] 作词 : Someone\n[00:00.500]作曲 : Other\n${NE_LRC}`, instrumental: false } }));
+  const r = await fetchLyrics(track, { fetchImpl: down().fetchImpl, backupFetch: b.backupFetch, backupBase: 'http://alt.test', log: quiet });
+  assert.equal(r.status, 'synced');
+  assert.equal(r.record.source, 'netease');
+  assert.deepEqual(r.lines.map((l) => l.text), ['hello there', 'second line']);
+  assert.equal(r.lines[1].time ?? r.lines[1].start, 5500);
+});
+
+test('the backup follows the same no-wrong-lyrics rule', async () => {
+  const b = backup((route) => (route === 'search' ? { status: 200, body: [neCand({ duration: 230 }), neCand({ id: 'ne:78', trackName: 'Different Song' }), neCand({ id: 'ne:79', artistName: 'Nobody' })] } : { status: 200, body: { syncedLyrics: NE_LRC } }));
+  // LRCLIB could not be asked and the backup matched nothing: still "unreachable", never a false "not found".
+  await assert.rejects(fetchLyrics(track, { fetchImpl: down().fetchImpl, backupFetch: b.backupFetch, backupBase: 'http://alt.test', log: quiet }), (e) => e instanceof LyricsError);
+  assert.deepEqual(b.calls, ['search']); // no lyric was even fetched
+});
+
+test('the backup is only asked when LRCLIB has no timed lyrics, and can be switched off', async () => {
+  const b = backup(() => ({ status: 200, body: [] }));
+  const found = service(() => ({ status: 200, body: rec() }));
+  assert.equal((await fetchLyrics(track, { fetchImpl: found.fetchImpl, backupFetch: b.backupFetch, backupBase: 'http://alt.test', log: quiet })).status, 'synced');
+  assert.equal(b.calls.length, 0);
+  const off = await fetchLyrics(track, { fetchImpl: down().fetchImpl, useBackup: false, backupFetch: b.backupFetch, backupBase: 'http://alt.test', log: quiet }).catch((e) => e);
+  assert.ok(off instanceof LyricsError);
+  assert.equal(b.calls.length, 0);
+});
+
+test('both services down is still an error, and an instrumental from LRCLIB is not second-guessed', async () => {
+  const b = backup(() => ({ status: 502, body: {} }));
+  await assert.rejects(fetchLyrics(track, { fetchImpl: down().fetchImpl, backupFetch: b.backupFetch, backupBase: 'http://alt.test', log: quiet }), (e) => e instanceof LyricsError);
+  const inst = service((path) => (path === 'get' ? { status: 200, body: rec({ instrumental: true, syncedLyrics: null }) } : { status: 404, body: {} }));
+  const b2 = backup(() => ({ status: 200, body: [] }));
+  assert.equal((await fetchLyrics(track, { fetchImpl: inst.fetchImpl, backupFetch: b2.backupFetch, backupBase: 'http://alt.test', log: quiet })).status, 'instrumental');
+  assert.equal(b2.calls.length, 0);
+});
+
+test('plain-only lyrics from LRCLIB are upgraded to timed ones from the backup when it has them', async () => {
+  const plain = service((path) => (path === 'get' ? { status: 200, body: rec({ syncedLyrics: null, plainLyrics: 'a\nb' }) } : { status: 200, body: [] }));
+  const b = backup((route) => (route === 'search' ? { status: 200, body: [neCand()] } : { status: 200, body: { syncedLyrics: NE_LRC } }));
+  assert.equal((await fetchLyrics(track, { fetchImpl: plain.fetchImpl, backupFetch: b.backupFetch, backupBase: 'http://alt.test', log: quiet })).status, 'synced');
+  const none = backup(() => ({ status: 200, body: [] }));
+  assert.equal((await fetchLyrics(track, { fetchImpl: plain.fetchImpl, backupFetch: none.backupFetch, backupBase: 'http://alt.test', log: quiet })).status, 'plain');
+});

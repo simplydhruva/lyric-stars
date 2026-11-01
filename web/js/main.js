@@ -545,7 +545,7 @@ async function loadLyrics(track, { force = false } = {}) {
 
   if (force) app.lyricsRetries = 0;
   try {
-    const result = await fetchLyrics(track, { rejectIds: cached?.entry.rejectIds || [] });
+    const result = await fetchLyrics(track, { rejectIds: cached?.entry.rejectIds || [], useBackup: settings.get('backupLyrics') });
     if (seq !== app.loadSeq) return;
     // Only a sure answer is saved. A "not found" where some request failed on the way is shown but not saved,
     // and asked again later.

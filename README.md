@@ -74,6 +74,7 @@ Diagnostics (`D`) shows which source and player are in use.
   **Retry** searches again; hover the label for the exact reason, and the browser console logs every lookup (query, status, result count, rejected matches). The cover is the largest image in `album.images` (64 px for thumbnails), preloaded when the
   song starts and kept per track. The Windows app reports no cover, so when you're logged in the song is looked up on
   Spotify by title and artist (or the account's own report of it is used); with no match, or no login, a gold star stands in.
+- **Backup lyrics source (Settings → Lyric text, on by default):** LRCLIB is a free community service and sometimes goes down. When it fails, or has no timed lyrics for a song, the app asks NetEase Music's public search through its own local server (title and artist go to music.163.com; nothing else does). It is unofficial and could stop working at any time, and then the app simply finds nothing. The no-wrong-lyrics rule is unchanged: title, artist and length (within 3 s) must match. Timing of backup lyrics is line by line, like LRCLIB. Switch it off if you do not want song titles sent there.
 - **Player bar** (bottom centre, fades after 3 s without mouse movement): previous, play/pause, next, and a progress bar you
   can click to seek. Shortcuts: `Space` play/pause, `←` previous, `→` next (`Space` still taps in the sync editor and
   the diagnostics tap test while those are open). It needs the Spotify account, not the PC-only source, and in the
@@ -145,7 +146,7 @@ web/config.js             BUILT_IN_CLIENT_ID and UPDATE_REPO for friend builds
 web/js/auth.js            Spotify PKCE login and silent refresh
 web/js/sources/           auto.js (Automatic), spotify.js, mediaSession.js, players.js (player names, title tidying),
                           demo.js, clock.js (position smoothing)
-web/js/lyrics/            lrc.js (parser), match.js (no-wrong-lyrics rules), lrclib.js (provider: cleans title and artist, tries get with album, get without, search, then a broader search; logs each request to the console)
+web/js/lyrics/            lrc.js (parser), match.js (no-wrong-lyrics rules), lrclib.js (provider; netease.js is the backup source: cleans title and artist, tries get with album, get without, search, then a broader search; logs each request to the console)
 web/js/cache.js           lyric cache client (found: kept; a true not found: 30 minutes; a service error is never saved)
 web/js/timing.js          word timing: real tags or taps, else syllable estimate
 web/js/syllables.js       syllable counts; data/syllable-exceptions.js is generated from CMUdict
@@ -167,6 +168,7 @@ tools/mock.mjs            runs the whole app against the fake Spotify in every s
 tools/timing-check.mjs    every word visible on its exact start time in every scene (npm run timing)
 tools/shots.mjs           screenshots of every scene at 1080p, 1440p, 150% and 200% scaling and a small window (npm run shots)
 tools/soak.mjs            key, resize and reduce-motion abuse, then a looping soak reporting heap, CPU and fps (npm run soak -- --minutes 10)
+tools/backup-check.mjs    LRCLIB down: the backup finds the song, finds nothing, is down too, or is switched off (npm run check:backup)
 tools/lrclib-probe.mjs    calls the real LRCLIB for five well-known songs and prints status and timing (node tools/lrclib-probe.mjs)
 tools/nowplaying-cases.mjs the no-lyrics scene for not found, service error, instrumental and not-timed, with pictures (node --experimental-websocket tools/nowplaying-cases.mjs OUT_DIR)
 tools/glow-shots.mjs      before/after pictures of blur and glow at 1080p and 200% scaling (node --experimental-websocket tools/glow-shots.mjs OUT_DIR)

@@ -84,6 +84,7 @@ ${this.host.desktop ? `      <label class="check"><input type="checkbox" name="b
 ` : ''}      <label class="check"><input type="checkbox" name="reduceMotion"${g('reduceMotion') ? ' checked' : ''}> Reduce motion (no drift, twinkle or pop)</label>
       <label class="check"><input type="checkbox" name="fullFrameRate"${g('fullFrameRate') ? ' checked' : ''}> Match a fast screen's refresh rate (smoother on 120 Hz+, uses more power)</label>
       <h3>Lyric text</h3>
+      <label class="check"><input type="checkbox" name="backupLyrics"${g('backupLyrics') ? ' checked' : ''}> Use a backup lyrics source (NetEase) when LRCLIB is down or has no timed lyrics; sends the song title and artist there</label>
       <label class="check"><input type="checkbox" name="romanize"${g('romanize') ? ' checked' : ''}> Show Korean, Japanese (kana), Russian and Greek lyrics in Latin letters (works offline)</label>
       <label class="check"><input type="checkbox" name="translate"${g('translate') ? ' checked' : ''}> Show a translation under each line</label>
       <p>Translation sends the song's lyric text to the free MyMemory service (api.mymemory.translated.net), once per song. It may be slow or limited; if it fails the lyrics just show without it.</p>

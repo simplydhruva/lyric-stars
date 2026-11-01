@@ -164,6 +164,49 @@ setInterval(() => {
   }
 }, 10_000).unref();
 
+// ---- backup lyrics source -------------------------------------------------
+// NetEase Music's public search and lyric pages, asked on the page's behalf because browsers may not call them.
+// Only title/artist or a song id go out. The page decides whether a result is the right song.
+
+async function neteaseJson(url) {
+  const r = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0', Referer: 'https://music.163.com/' }, signal: AbortSignal.timeout(8000) });
+  if (!r.ok) throw new Error(`status ${r.status}`);
+  return r.json();
+}
+
+async function handleBackupLyrics(res, route, params) {
+  try {
+    if (route === 'search') {
+      const title = (params.get('title') || '').slice(0, 200);
+      const artist = (params.get('artist') || '').slice(0, 200);
+      if (!title) return send(res, 400, 'no title');
+      const j = await neteaseJson(`https://music.163.com/api/search/get?${new URLSearchParams({ s: `${title} ${artist}`.trim(), type: '1', limit: '10' })}`);
+      const songs = j?.result?.songs || [];
+      return send(
+        res,
+        200,
+        songs.map((s) => ({
+          id: `ne:${s.id}`,
+          trackName: s.name,
+          artistName: (s.artists || s.ar || []).map((a) => a.name).join(', '),
+          albumName: s.album?.name || s.al?.name || '',
+          duration: (s.duration ?? s.dt ?? 0) / 1000,
+        }))
+      );
+    }
+    if (route === 'lyric') {
+      const id = params.get('id') || '';
+      if (!/^\d{1,12}$/.test(id)) return send(res, 400, 'bad id');
+      const j = await neteaseJson(`https://music.163.com/api/song/lyric?${new URLSearchParams({ id, lv: '1' })}`);
+      const text = j?.lrc?.lyric || '';
+      return send(res, 200, { syncedLyrics: text, instrumental: j?.nolyric === true || /纯音乐，请欣赏/.test(text) });
+    }
+    return send(res, 404, 'unknown');
+  } catch (e) {
+    return send(res, 502, { error: String(e?.message || e).slice(0, 200) });
+  }
+}
+
 // ---- static files -------------------------------------------------------
 
 async function serveStatic(req, res, pathname) {
@@ -213,6 +256,7 @@ async function handle(req, res) {
         return send(res, 204, '');
       }
       if (p === '/api/cache-stats') return send(res, 200, await cacheStats());
+      if (p.startsWith('/api/lyrics-alt/') && req.method === 'GET') return await handleBackupLyrics(res, p.slice(16), url.searchParams);
       if (p === '/api/health') return send(res, 200, { app: 'lyric-stars' });
       if (p === '/api/login-handoff' && req.method === 'POST') {
         // The desktop app opens Spotify login in the normal browser; the tab Spotify
