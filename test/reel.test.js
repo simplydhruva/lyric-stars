@@ -39,7 +39,7 @@ function planAll(w, h, seed, n = 24) {
   return out;
 }
 
-const SIZES = [[1920, 1080], [2560, 1440], [700, 900], [390, 844]];
+const SIZES = [[1920, 1080], [2560, 1440], [700, 900], [700, 500]];
 
 test('hero word: the stressed word is the hero and its cap height is at most 45% of the screen', () => {
   for (const [w, h] of SIZES) {
@@ -90,7 +90,7 @@ test('layout: the hero is never in the same area as the previous hero, and layou
       const a = all[i - 1].plan.heroCenter;
       const b = all[i].plan.heroCenter;
       // one-word lines are centred by nature, so the distance rule can only be met by moving; allow equal only if nothing else fits
-      if (all[i].words.length > 1 && all[i - 1].words.length > 1) assert.ok(Math.hypot(a.x - b.x, a.y - b.y) >= 0.09, `line ${i}: heroes ${JSON.stringify(a)} ${JSON.stringify(b)} at ${w}x${h}`);
+      if (all[i].words.length > 1 && all[i - 1].words.length > 1) assert.ok(Math.hypot(a.x - b.x, a.y - b.y) >= 0.1, `line ${i}: heroes ${JSON.stringify(a)} ${JSON.stringify(b)} at ${w}x${h}`);
     }
   }
 });

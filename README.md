@@ -39,6 +39,7 @@ npm run helper   # rebuild native/bin/lyricstars-media.exe (desktop and dist do 
 
 - The same page, served by the same local server on 127.0.0.1:5173, inside Electron. The page gets no Node access, only a
   small `window.lyricStars` bridge. Navigation is locked to that origin; only Spotify, the Spotify developer site and GitHub open in the browser.
+- **Minimum window size:** 700 × 500. The window cannot be dragged smaller, and a smaller saved size (or one from a small screen) is raised to this when it is restored. The Reel scene's layout rules are checked from 700 × 500 up.
 - **Styles:** window and fullscreen (`F`). Each style remembers its own size, place and monitor in `%APPDATA%\LyricStars\desktop\desktop.json`. (The overlay and mini widget of older versions are gone; a saved setting for either is ignored and the app opens as a normal window.)
 - **Shortcuts (any app):** `Ctrl+Alt+L` show or hide. Tray: show, styles,
   start with Windows, open to tray (no window or drawing until shown), update check, quit. Closing the window quits.

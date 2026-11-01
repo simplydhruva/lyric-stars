@@ -17,13 +17,15 @@ const PAGE = `(async () => {
   const adv = new Map();
   const advanceOf = (id, ch) => { const k = id + ch; let v = adv.get(k); if (v === undefined) { g.font = F.weightOf(id) + ' 100px ' + F.familyOf(id); v = g.measureText(ch).width / 100; adv.set(k, v); } return v; };
   const metrics = (t, id, cap, key) => M.metricsOf(t, id, cap, advanceOf, key);
+  const inks = new Map();
+  const inkFn = (id, ch) => { const k = id + ch; let v = inks.get(k); if (!v) { g.font = F.weightOf(id) + ' 100px ' + F.familyOf(id); const m = g.measureText(ch); v = [m.actualBoundingBoxLeft / 100, m.actualBoundingBoxRight / 100, m.actualBoundingBoxAscent / 100, m.actualBoundingBoxDescent / 100]; inks.set(k, v); } return v; };
   const LINES = [
     'Love is a burning fire tonight', 'Dancing under the moon and the stars', 'Tears fall like rain on the ocean',
     'In the middle of the night when the stars are bright and the world is quiet and still and nobody knows my name at all',
     'Kiss me in the sunshine, dream of me', 'Hold me closer tonight', 'Burning', 'Oh', 'Yeah yeah yeah', 'I can\\u2019t stop',
     'Caf\\u00e9 \\u201c\\u00d1and\\u00fa\\u201d 100% don\\u2019t', 'Why', 'We will rock you', 'Everybody wants to rule the world',
   ];
-  const SIZES = [[1920, 1080], [2560, 1440], [700, 900], [390, 844], [1280, 720]];
+  const SIZES = [[1920, 1080], [2560, 1440], [700, 900], [700, 500], [1280, 720]];
   const modes = F.FONT_IDS.map((id) => 'single:' + id).concat(['mix']);
   const out = { plans: 0, bad: [], worstCut: 0, minVis: 1, worstOverlap: 0, perFont: {} };
   const inkBox = (word, l) => {
@@ -58,7 +60,7 @@ const PAGE = `(async () => {
           const heroIdx = K.loudestIndex(words);
           const picks = single ? words.map(() => single) : picker.lineFonts(li, words.length, heroIdx);
           const texts = words.map((wd, i) => F.caseOf(picks[i], wd.text));
-          const plan = M.planLine({ w, h, li, seed: seed * 7919, words, texts, fonts: picks, prevCenter: prev && prev.words.length ? prev.heroCenter : null, prevKind: prev ? prev.kind : null, kind: M.kindOf(seed * 7919, li), metrics });
+          const plan = M.planLine({ w, h, li, seed: seed * 7919, words, texts, fonts: picks, prevCenter: prev && prev.words.length ? prev.heroCenter : null, prevKind: prev ? prev.kind : null, kind: M.kindOf(seed * 7919, li), metrics, ink: inkFn });
           prev = plan;
           out.plans++; pf.plans++;
           const tag = w + 'x' + h + ' ' + (single || 'mix') + ' seed' + seed + ' line' + li + ' ' + plan.kind;
@@ -89,11 +91,11 @@ const PAGE = `(async () => {
           for (const wd of plan.words) {
             if (wd === heroW) continue;
             for (const l of wd.letters) {
-              // the letter itself must be inside the safe margin and above the controls zone; its black outline (cap*0.085)
-              // may reach into the margin but must stay on screen and no more than 1% of the height into the controls zone
-              const tol = Math.min(w, h) * 0.012 + 1; // the 5% margin is kept to within 1.2% of the smaller side
+              // the letter itself must be inside the safe margin and above the controls zone; its black outline (cap*0.085) may reach into
+              // the margin but must stay on screen and out of the controls zone
+              const tol = 1; // the 5% margin, to the pixel
               const b = corners(wd, l, 0), o = corners(wd, l, wd.cap * 0.085);
-              if (b[0] < w * M.SAFE - tol || b[2] > w * (1 - M.SAFE) + tol || b[1] < h * M.SAFE - tol || b[3] > botY + tol || o[0] < 0 || o[1] < 0 || o[2] > w || o[3] > botY + h * 0.01) { fail('"' + wd.text + '" ink ' + b.map(Math.round) + ' (outline ' + o.map(Math.round) + ')' + ' outside safe zone ' + [w * M.SAFE, h * M.SAFE, w * (1 - M.SAFE), botY].map(Math.round)); break; }
+              if (b[0] < w * M.SAFE - tol || b[2] > w * (1 - M.SAFE) + tol || b[1] < h * M.SAFE - tol || b[3] > botY + tol || o[0] < 0 || o[1] < 0 || o[2] > w || o[3] > botY + 1e-6) { fail('"' + wd.text + '" ink ' + b.map(Math.round) + ' (outline ' + o.map(Math.round) + ')' + ' outside safe zone ' + [w * M.SAFE, h * M.SAFE, w * (1 - M.SAFE), botY].map(Math.round)); break; }
             }
           }
           const cap = heroW.cap;
@@ -108,7 +110,7 @@ const PAGE = `(async () => {
                 if (ox > 0 && oy > 0) {
                   const d = Math.min(ox, oy);
                   out.worstOverlap = Math.max(out.worstOverlap, d);
-                  if (d > 1.5) fail('"' + wd.text + '" letter ' + l.ch + ' on the hero shadow by ' + Math.round(d) + ' px');
+                  if (d > 0.01) fail('"' + wd.text + '" letter ' + l.ch + ' on the hero shadow by ' + Math.round(d) + ' px');
                 }
               }
             }

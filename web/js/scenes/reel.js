@@ -74,6 +74,7 @@ export function createReel() {
   let okIds = FONT_IDS.slice();
   const picker = createFontPicker();
   const advances = new Map();
+  const inks = new Map();
   function loadFonts() {
     fontsRequested = true;
     if (typeof document === 'undefined' || !document.fonts?.load) {
@@ -88,6 +89,7 @@ export function createReel() {
       okIds = FONTS.filter((f) => loaded.has(f.family)).map((f) => f.id);
       if (!okIds.length) okIds = [FALLBACK];
       fontsReady = true;
+      inks.clear();
       advances.clear(); // widths measured with a stand-in font are wrong
       resetAll();
       pokeRedraw();
@@ -101,6 +103,18 @@ export function createReel() {
       ctx.font = `${weightOf(fontId)} 100px ${familyOf(fontId)}`;
       v = ctx.measureText(ch).width / 100;
       advances.set(k, v);
+    }
+    return v;
+  }
+  // The real ink of one character per unit of font size: [left, right, ascent, descent] around its origin and baseline.
+  function inkOf(fontId, ch) {
+    const k = fontId + ch;
+    let v = inks.get(k);
+    if (v === undefined) {
+      ctx.font = `${weightOf(fontId)} 100px ${familyOf(fontId)}`;
+      const m = ctx.measureText(ch);
+      v = [m.actualBoundingBoxLeft / 100, m.actualBoundingBoxRight / 100, m.actualBoundingBoxAscent / 100, m.actualBoundingBoxDescent / 100];
+      inks.set(k, v);
     }
     return v;
   }
@@ -403,7 +417,7 @@ export function createReel() {
         texts.push(caseOf(picks[i], wd.text));
       });
       const prev = j > 0 ? plans.get(j - 1) : null;
-      const plan = planLine({ w: frame.w, h: frame.h, li: j, seed: seedI, words, texts, fonts, prevCenter: prev && prev.words.length ? prev.heroCenter : null, prevKind: prev ? prev.kind : null, kind, metrics });
+      const plan = planLine({ w: frame.w, h: frame.h, li: j, seed: seedI, words, texts, fonts, prevCenter: prev && prev.words.length ? prev.heroCenter : null, prevKind: prev ? prev.kind : null, kind, metrics, ink: inkOf });
       plans.set(j, plan);
     }
     return plans.get(li);

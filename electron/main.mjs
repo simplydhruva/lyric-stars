@@ -243,7 +243,7 @@ function enterFullscreen(w) {
   if (target && target.id !== current?.id) {
     // Move onto the remembered screen first; fullscreen uses the screen the window is on.
     const wa = target.workArea;
-    w.setBounds({ x: wa.x + 40, y: wa.y + 40, width: Math.min(800, wa.width - 80), height: Math.min(500, wa.height - 80) });
+    w.setBounds({ x: wa.x + 40, y: wa.y + 40, width: Math.max(MIN_SIZE.window[0], Math.min(800, wa.width - 80)), height: Math.max(MIN_SIZE.window[1], Math.min(560, wa.height - 80)) });
   }
   w.setFullScreen(true);
 }

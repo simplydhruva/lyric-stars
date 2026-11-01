@@ -11,7 +11,7 @@ export const DEFAULT_STATE = {
 };
 
 const SIZES = {
-  window: { width: 1100, height: 680, minWidth: 360, minHeight: 240 },
+  window: { width: 1100, height: 680, minWidth: 700, minHeight: 500 },
 };
 export const MIN_SIZE = { window: [SIZES.window.minWidth, SIZES.window.minHeight] };
 

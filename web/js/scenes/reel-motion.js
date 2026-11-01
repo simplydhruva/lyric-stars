@@ -215,6 +215,37 @@ export function boxOf(W, C, rot, out) {
 
 // How many of the hero's letters are fully on screen (0..1), from the placed word. Handles the two orientations the hero
 // has: along the x axis (rot ~ 0) or along the y axis (rot ~ +-90 degrees).
+// The screen box of a placed word's real ink (letters carry il/ir/ia/id from the ink metrics), turned by the letter and word tilts.
+export function inkBounds(word, grow = 0) {
+  const cw = Math.cos(word.rot);
+  const sw = Math.sin(word.rot);
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const l of word.letters) {
+    if (l.il === undefined) continue;
+    const x0 = -l.adv / 2 - l.il - grow;
+    const x1 = -l.adv / 2 + l.ir + grow;
+    const y0 = word.cap / 2 - l.ia - grow;
+    const y1 = word.cap / 2 + l.id + grow;
+    const cl = Math.cos(l.rot || 0);
+    const sl = Math.sin(l.rot || 0);
+    const lx = l.x - word.width / 2 + l.adv / 2;
+    for (const [px, py] of [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]) {
+      const rx = px * cl - py * sl + lx;
+      const ry = px * sl + py * cl + (l.dy || 0);
+      const X = word.cx + rx * cw - ry * sw;
+      const Y = word.cy + rx * sw + ry * cw;
+      if (X < minX) minX = X;
+      if (X > maxX) maxX = X;
+      if (Y < minY) minY = Y;
+      if (Y > maxY) maxY = Y;
+    }
+  }
+  return { minX, minY, maxX, maxY };
+}
+
 export function heroVisible(word, w, h) {
   const ls = word.letters;
   if (!ls.length) return 1;
@@ -223,8 +254,8 @@ export function heroVisible(word, w, h) {
   const dir = word.rot < 0 ? -1 : 1;
   let seen = 0;
   for (const l of ls) {
-    const a = l.x - total / 2;
-    const b = a + l.adv;
+    const a = l.x - total / 2 - (l.il || 0);
+    const b = l.x - total / 2 + (l.ir ?? l.adv);
     let lo;
     let hi;
     if (!vertical) {
@@ -248,8 +279,8 @@ export function maxLetterCut(word, w, h) {
   const dir = word.rot < 0 ? -1 : 1;
   let worst = 0;
   for (const l of word.letters) {
-    const a = l.x - total / 2;
-    const b = a + l.adv;
+    const a = l.x - total / 2 - (l.il || 0);
+    const b = l.x - total / 2 + (l.ir ?? l.adv);
     let lo;
     let hi;
     let max;
@@ -276,7 +307,7 @@ export function maxLetterCut(word, w, h) {
 // Returns { kind, hero, words: [word...], heroCenter }. Every word: { i, text, font, role, cap, width, letters, key, cx, cy,
 // rot, bw, bh, grow, slackX, slackY, enter }.
 export function planLine(o) {
-  const { w, h, li, seed, words, texts, fonts, prevCenter } = o;
+  const { w, h, li, seed, words, texts, fonts, prevCenter, ink } = o; // ink(font, ch) -> [left, right, ascent, descent] per unit of font size, from real glyph metrics (optional)
   const n = texts.length;
   const plan = { li, kind: o.kind, hero: -1, words: [], heroCenter: { x: 0.5, y: 0.5 }, bled: false };
   if (!n) return plan;
@@ -294,7 +325,24 @@ export function planLine(o) {
   const heroLetters = lettersOf(texts[hero]);
   // The space kept under the hero so that nothing sits on its hard shadow: the shadow's reach plus what the hero's slight tilt adds
   // at its ends.
-  const gapUnder = (cap, width) => 0.13 * cap + 0.03 * width;
+  // How far each word's real ink runs past its box, as a share of its cap height (see `over` in finish()).
+  const overU = ref.map((r, i) => {
+    let over = ACCENTED.test(texts[i]) ? 0.3 : 0;
+    if (ink) {
+      over = 0;
+      for (const l of r.letters) {
+        const m = ink(l.font, l.ch);
+        if (!m) continue;
+        const a = l.x - r.width / 2 - m[0] * l.size;
+        const b = l.x - r.width / 2 + m[1] * l.size;
+        over = Math.max(over, -r.width / 2 - a, b - r.width / 2, -50 - (50 + l.dy - m[2] * l.size), 50 + l.dy + m[3] * l.size - 50);
+      }
+      over = Math.max(0, over) / 100 + 0.05;
+    }
+    return over;
+  });
+  const otherOver = Math.max(0, ...overU.filter((_, i) => i !== hero));
+  const gapUnder = (cap, width) => (0.13 + overU[hero] + 0.6 * otherOver) * cap + 0.03 * width;
   const roundCap = (v) => Math.round(v * 2) / 2;
 
   const heroBase = h * (n === 1 ? 0.38 + (HERO_MAX - 0.38) * hash(li, seed + 21) : 0.28 + 0.12 * hash(li, seed + 21));
@@ -318,7 +366,7 @@ export function planLine(o) {
       const hw = widthAt(hero, caps[hero]) * HOLD + 2 * PAD * caps[hero];
       if (hw > heroMax) caps[hero] *= heroMax / hw;
       heroT = caps[hero] * (1 + 2 * PAD);
-      regionW = vertical ? w * (1 - 2 * SAFE) - heroT - (w * 0.03 + 0.14 * caps[hero]) : usableW; // (the gap beside a vertical hero clears its shadow)
+      regionW = vertical ? w * (1 - 2 * SAFE) - heroT - (w * 0.03 + (0.14 + overU[hero] + 0.6 * otherOver) * caps[hero]) : usableW; // (the gap beside a vertical hero clears its shadow)
       if (vertical && regionW < w * 0.3) return null;
       for (let i = 0; i < n; i++) {
         if (i === hero) continue;
@@ -403,7 +451,7 @@ export function planLine(o) {
       const left = v.side === 0;
       const hx = left ? w * SAFE + b.heroT / 2 : w * (1 - SAFE) - b.heroT / 2;
       put(hero, hx, (h * SAFE + botY) / 2 + (v.zoneT - 0.5) * Math.max(0, usableH - hw - 2 * PAD * heroCap), left ? -Math.PI / 2 : Math.PI / 2);
-      const x0 = left ? w * SAFE + b.heroT + w * 0.03 + 0.14 * heroCap : w * SAFE;
+      const x0 = left ? w * SAFE + b.heroT + w * 0.03 + (0.14 + overU[hero] + 0.6 * otherOver) * heroCap : w * SAFE;
       const top = h * SAFE + free * (1 - v.zoneT);
       const all = [...rows.pre, ...rows.post];
       rowPlace(all, x0, b.regionW, top, pitch, 0);
@@ -432,17 +480,38 @@ export function planLine(o) {
       it.role = roles[i];
       it.key = keys[i];
       it.letters = ref[i].letters.map((l) => ({ ...l, x: (l.x * cap) / 100, adv: (l.adv * cap) / 100, size: (l.size * cap) / 100, dy: (l.dy * cap) / 100 }));
+      // The real ink of each letter (it can run past its advance: italics, swashes, accents above the cap height). `over` is how far
+      // any ink goes outside the word's box, so the walls can be kept by the ink and not by the box.
+      if (ink) {
+        for (const l of it.letters) {
+          const m = ink(l.font, l.ch);
+          if (!m) continue;
+          l.il = m[0] * l.size;
+          l.ir = m[1] * l.size;
+          l.ia = m[2] * l.size;
+          l.id = m[3] * l.size;
+        }
+      }
+      it.over = overU[i] * cap;
       const vert = Math.abs(Math.sin(rot)) > 0.7;
       if (!hero_) {
         // accented capitals (É, Ñ, Å...) carry marks that rise above the cap height, so they get extra room on every side
-        const acc = ACCENTED.test(texts[i]) ? 0.3 * cap : 0;
+        const acc = it.over;
         it.cx = clamp(it.cx, w * SAFE + it.bw / 2 + acc, Math.max(w * SAFE + it.bw / 2 + acc, w * (1 - SAFE) - it.bw / 2 - acc));
         it.cy = clamp(it.cy, h * SAFE + it.bh / 2 + acc, Math.max(h * SAFE + it.bh / 2 + acc, botY - it.bh / 2 - acc));
+        if (ink) {
+          // then the real ink, tilts included: slide the word until its letters (and their outline) are inside the walls
+          for (let pass = 0; pass < 2; pass++) {
+            const bb = inkBounds(it, it.cap * 0.085);
+            it.cx += Math.max(0, w * SAFE - bb.minX) - Math.max(0, bb.maxX - w * (1 - SAFE));
+            it.cy += Math.max(0, h * SAFE - bb.minY) - Math.max(0, bb.maxY - botY);
+          }
+        }
       } else {
         // the hero: inside the safe margin across its word, and along it at most MAX_CROP over an edge (bleed)
         const along = vert ? it.bh : it.bw;
         const across = vert ? it.bw : it.bh;
-        const hacc = ACCENTED.test(texts[i]) ? 0.3 * cap : 0;
+        const hacc = it.over;
         const bleed = v.bleed ? Math.min(heroMainSlack, MAX_CROP) : 0;
         // (the bleed is added below, and only when the real letters stay recognisable)
         const lo = along * 0.5;
@@ -548,13 +617,13 @@ export function planLine(o) {
   // try the variants in a seeded order; take the first whose hero is far enough from the previous hero
   // a rotated layout that does not fit falls back to another kind, but not the previous line's
   const others = ['stacked', 'diagonal'].filter((k) => k !== o.prevKind);
-  const kinds = o.kind === 'rot90' ? (o.prevKind === 'rot90' ? others : ['rot90', ...others]) : o.kind === o.prevKind ? others : [o.kind];
+  const kinds = o.kind === 'rot90' ? (o.prevKind === 'rot90' ? others : ['rot90', ...others]) : o.kind === o.prevKind ? others : [o.kind, ...others.filter((k) => k !== o.kind), ...(o.prevKind === 'rot90' ? [] : ['rot90'])];
   let chosen = null;
   for (const kind of kinds) {
     const b = build(kind);
     if (!b) continue;
     const variants = [];
-    for (let z = 0; z < 3; z++) for (let s = 0; s < 2; s++) variants.push(kind === 'rot90' ? { zoneT: [0.15, 0.5, 0.85][z], side: s, flip: s, bleed: false } : { zoneT: [0, 0.5, 1][z], flip: s, side: 0, bleed: kind === 'diagonal' && heroLetters >= 5 && hash(li, seed + 43) < 0.6 });
+    for (let z = 0; z < (kind === 'rot90' ? 3 : 5); z++) for (let s = 0; s < 2; s++) variants.push(kind === 'rot90' ? { zoneT: [0.15, 0.5, 0.85][z], side: s, flip: s, bleed: false } : { zoneT: [0, 0.5, 1, 0.25, 0.75][z], flip: s, side: 0, bleed: kind === 'diagonal' && heroLetters >= 5 && hash(li, seed + 43) < 0.6 });
     const start = Math.floor(hash(li, seed + 44) * variants.length);
     let best = null;
     for (let k = 0; k < variants.length; k++) {
@@ -565,8 +634,8 @@ export function planLine(o) {
       if (!best || d > best.d) best = { b, items, hc, d, v };
       if (d >= 0.22) break;
     }
-    chosen = best;
-    break;
+    if (!chosen || best.d > chosen.d) chosen = best;
+    if (chosen.d >= 0.1) break; // far enough from the previous hero; otherwise try the next kind too
   }
   plan.kind = chosen.b.kind;
   plan.words = chosen.items;

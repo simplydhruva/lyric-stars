@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { normalizeState, placeWindow, fullscreenDisplay, DEFAULT_STATE } from '../electron/layout.mjs';
+import { normalizeState, placeWindow, fullscreenDisplay, DEFAULT_STATE, MIN_SIZE } from '../electron/layout.mjs';
 import { parseVersion, isNewer, isValidRepo, checkForUpdate } from '../electron/updates.mjs';
 
 const primary = { id: 1, primary: true, workArea: { x: 0, y: 0, width: 1920, height: 1040 } };
@@ -114,4 +114,12 @@ test('state from older versions (overlay, mini) loads as a normal window without
     assert.equal(s.overlay, undefined);
     assert.equal(s.mini, undefined);
   }
+});
+
+test('the window is never smaller than 700x500, not even from a saved tiny size', () => {
+  assert.deepEqual(MIN_SIZE.window, [700, 500]);
+  const primary = { id: 1, primary: true, workArea: { x: 0, y: 0, width: 1920, height: 1040 } };
+  const r = placeWindow('window', { x: 100, y: 100, width: 300, height: 200 }, [primary]);
+  assert.equal(r.width, 700);
+  assert.equal(r.height, 500);
 });
