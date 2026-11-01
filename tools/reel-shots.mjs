@@ -93,9 +93,9 @@ try {
   if (only === 'fixes') {
     // the two layout fixes: the BURNING line, and the very long line, at three sizes
     await shot('fix-burning', 'busy', FHD, 4.4);
-    await shot('fix-long-1920', 'blue', FHD, 22.5);
-    await shot('fix-long-700x900', 'blue', [700, 900, 1], 22.5);
-    await shot('fix-long-1280x720-200pct', 'blue', [1280, 720, 2], 22.5);
+    await shot('fix-long-1920', 'blue', FHD, 22.9);
+    await shot('fix-long-700x900', 'blue', [700, 900, 1], 22.9);
+    await shot('fix-long-1280x720-200pct', 'blue', [1280, 720, 2], 22.9);
   }
   if (only === 'all' || only === 'sizes') {
     for (const [name, size] of [['2560x1440', [2560, 1440, 1]], ['700x900', [700, 900, 1]], ['1280x720-at-200pct', [1280, 720, 2]], ['1920x1080-at-150pct', [1920, 1080, 1.5]]]) {

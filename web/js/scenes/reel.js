@@ -111,9 +111,9 @@ export function createReel() {
     const k = fontId + ch;
     let v = inks.get(k);
     if (v === undefined) {
-      ctx.font = `${weightOf(fontId)} 100px ${familyOf(fontId)}`;
+      ctx.font = `${weightOf(fontId)} 400px ${familyOf(fontId)}`; // (measured big: the browser rounds these to whole pixels)
       const m = ctx.measureText(ch);
-      v = [m.actualBoundingBoxLeft / 100, m.actualBoundingBoxRight / 100, m.actualBoundingBoxAscent / 100, m.actualBoundingBoxDescent / 100];
+      v = [m.actualBoundingBoxLeft / 400, m.actualBoundingBoxRight / 400, m.actualBoundingBoxAscent / 400, m.actualBoundingBoxDescent / 400];
       inks.set(k, v);
     }
     return v;

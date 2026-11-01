@@ -215,6 +215,36 @@ export function boxOf(W, C, rot, out) {
 
 // How many of the hero's letters are fully on screen (0..1), from the placed word. Handles the two orientations the hero
 // has: along the x axis (rot ~ 0) or along the y axis (rot ~ +-90 degrees).
+// The screen box of every letter's real ink (grown by `grow`), turned by the letter and word tilts.
+export function letterBoxes(word, grow = 0) {
+  const cw = Math.cos(word.rot);
+  const sw = Math.sin(word.rot);
+  const out = [];
+  for (const l of word.letters) {
+    if (l.il === undefined) continue;
+    const x0 = -l.adv / 2 - l.il - grow;
+    const x1 = -l.adv / 2 + l.ir + grow;
+    const y0 = word.cap / 2 - l.ia - grow;
+    const y1 = word.cap / 2 + l.id + grow;
+    const cl = Math.cos(l.rot || 0);
+    const sl = Math.sin(l.rot || 0);
+    const lx = l.x - word.width / 2 + l.adv / 2;
+    const b = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+    for (const [px, py] of [[x0, y0], [x1, y0], [x1, y1], [x0, y1]]) {
+      const rx = px * cl - py * sl + lx;
+      const ry = px * sl + py * cl + (l.dy || 0);
+      const X = word.cx + rx * cw - ry * sw;
+      const Y = word.cy + rx * sw + ry * cw;
+      if (X < b.minX) b.minX = X;
+      if (X > b.maxX) b.maxX = X;
+      if (Y < b.minY) b.minY = Y;
+      if (Y > b.maxY) b.maxY = Y;
+    }
+    out.push(b);
+  }
+  return out;
+}
+
 // The screen box of a placed word's real ink (letters carry il/ir/ia/id from the ink metrics), turned by the letter and word tilts.
 export function inkBounds(word, grow = 0) {
   const cw = Math.cos(word.rot);
@@ -349,7 +379,7 @@ export function planLine(o) {
   const midK = 0.3 + 0.12 * hash(li, seed + 22);
   const smallK = 0.15 + 0.05 * hash(li, seed + 23);
 
-  function build(kind) {
+  function build(kind, shrink = 1) {
     const vertical = kind === 'rot90';
     const caps = new Array(n);
     let f = 1;
@@ -359,7 +389,7 @@ export function planLine(o) {
     for (let iter = 0; iter < 12; iter++) {
       for (let i = 0; i < n; i++) {
         const base = roles[i] === 'hero' ? heroBase : roles[i] === 'mid' ? heroBase * midK : heroBase * smallK;
-        caps[i] = roles[i] === 'hero' ? Math.max(36, base * f) : Math.max(MIN_CAP, base * f);
+        caps[i] = roles[i] === 'hero' ? Math.max(36, base * f) : Math.max(MIN_CAP, base * f * shrink);
       }
       // the hero must fit along its own axis
       const heroMax = vertical ? usableH : usableW;
@@ -540,7 +570,72 @@ export function planLine(o) {
         }
       }
     }
+    if (ink) separate(items);
     return items;
+  }
+
+  // Two words (not the hero) must not touch: where the real ink of their letters overlaps, the later word is pushed away along the
+  // way out that moves it least, then kept inside the walls again. A few rounds settle chains of neighbours.
+  // Where the ink of one word meets the ink or the black outline of another (the outline is cap*0.085 around each letter, and a little
+  // clearance is added because the ink is measured at 100 px and scaled): the deepest meeting as { ox, oy, dirX, dirY }, or null.
+  function clash(A, C, min) {
+    let best = null;
+    for (const [ga, gc] of [[1.5, 1.5 + C.cap * 0.085], [1.5 + A.cap * 0.085, 1.5]]) {
+      const ba = letterBoxes(A, ga);
+      const bc = letterBoxes(C, gc);
+      for (const x of ba) {
+        for (const y of bc) {
+          const ox = Math.min(x.maxX, y.maxX) - Math.max(x.minX, y.minX);
+          const oy = Math.min(x.maxY, y.maxY) - Math.max(x.minY, y.minY);
+          if (ox > min && oy > min && (!best || Math.min(ox, oy) > best.d)) {
+            const dirX = (y.minX + y.maxX) / 2 >= (x.minX + x.maxX) / 2 ? 1 : -1;
+            const dirY = (y.minY + y.maxY) / 2 >= (x.minY + x.maxY) / 2 ? 1 : -1;
+            best = { d: Math.min(ox, oy), ox, oy, dirX, dirY };
+          }
+        }
+      }
+    }
+    return best;
+  }
+
+  function separate(items) {
+    const GAP = 0.5;
+    for (let round = 0; round < 12; round++) {
+      let moved = false;
+      for (let a = 0; a < n; a++) {
+        for (let c = a + 1; c < n; c++) {
+          if (a === hero || c === hero) continue;
+          const best = clash(items[a], items[c], 0.4);
+          if (!best) continue;
+          // both words give way (the later one a bit more), each is then kept inside the walls again
+          const A = items[a];
+          const C = items[c];
+          const dy = best.oy + GAP;
+          const dx = best.ox + GAP;
+          if (best.oy <= best.ox) {
+            C.cy += best.dirY * dy * 0.6;
+            A.cy -= best.dirY * dy * 0.4;
+          } else {
+            C.cx += best.dirX * dx * 0.6;
+            A.cx -= best.dirX * dx * 0.4;
+          }
+          for (const it of [A, C]) {
+            const bb = inkBounds(it, it.cap * 0.085);
+            it.cx += Math.max(0, w * SAFE - bb.minX) - Math.max(0, bb.maxX - w * (1 - SAFE));
+            it.cy += Math.max(0, h * SAFE - bb.minY) - Math.max(0, bb.maxY - botY);
+          }
+          moved = true;
+        }
+      }
+      for (let i = 0; i < n; i++) {
+        if (i === hero) continue;
+        const it = items[i];
+        const bb = inkBounds(it, it.cap * 0.085);
+        it.cx += Math.max(0, w * SAFE - bb.minX) - Math.max(0, bb.maxX - w * (1 - SAFE));
+        it.cy += Math.max(0, h * SAFE - bb.minY) - Math.max(0, bb.maxY - botY + 1);
+      }
+      if (!moved) break;
+    }
   }
 
   // grow room and entrance, after the final positions are known
@@ -618,24 +713,67 @@ export function planLine(o) {
   // a rotated layout that does not fit falls back to another kind, but not the previous line's
   const others = ['stacked', 'diagonal'].filter((k) => k !== o.prevKind);
   const kinds = o.kind === 'rot90' ? (o.prevKind === 'rot90' ? others : ['rot90', ...others]) : o.kind === o.prevKind ? others : [o.kind, ...others.filter((k) => k !== o.kind), ...(o.prevKind === 'rot90' ? [] : ['rot90'])];
-  let chosen = null;
-  for (const kind of kinds) {
-    const b = build(kind);
-    if (!b) continue;
-    const variants = [];
-    for (let z = 0; z < (kind === 'rot90' ? 3 : 5); z++) for (let s = 0; s < 2; s++) variants.push(kind === 'rot90' ? { zoneT: [0.15, 0.5, 0.85][z], side: s, flip: s, bleed: false } : { zoneT: [0, 0.5, 1, 0.25, 0.75][z], flip: s, side: 0, bleed: kind === 'diagonal' && heroLetters >= 5 && hash(li, seed + 43) < 0.6 });
-    const start = Math.floor(hash(li, seed + 44) * variants.length);
-    let best = null;
-    for (let k = 0; k < variants.length; k++) {
-      const v = variants[(start + k) % variants.length];
-      const items = finish(b, place(b, v), v);
-      const hc = { x: items[hero].cx / w, y: items[hero].cy / h };
-      const d = prevCenter ? Math.hypot(hc.x - prevCenter.x, hc.y - prevCenter.y) : 1;
-      if (!best || d > best.d) best = { b, items, hc, d, v };
-      if (d >= 0.22) break;
+  // Words of one line must not touch each other (their real ink; the hero is checked on its shadow). A layout whose words still touch
+  // after pushing them apart is passed over; if every variant touches, the small and middle words are made a little smaller.
+  const touching = (items) => {
+    if (!ink) return false;
+    for (let x = 0; x < n; x++) {
+      if (x === hero) continue;
+      const bb = inkBounds(items[x], items[x].cap * 0.085);
+      if (bb.minX < w * SAFE - 0.01 || bb.maxX > w * (1 - SAFE) + 0.01 || bb.minY < h * SAFE - 0.01 || bb.maxY > botY - 0.5) return true; // (half a pixel of room under the controls zone)
     }
-    if (!chosen || best.d > chosen.d) chosen = best;
-    if (chosen.d >= 0.1) break; // far enough from the previous hero; otherwise try the next kind too
+    for (let x = 0; x < n; x++) {
+      for (let y = x + 1; y < n; y++) {
+        if (x === hero || y === hero) continue;
+        if (clash(items[x], items[y], 0.4)) return true;
+      }
+    }
+    return false;
+  };
+  const meeting = (items) => {
+    let m = 0;
+    for (let x = 0; x < n; x++) {
+      for (let y = x + 1; y < n; y++) {
+        if (x === hero || y === hero) continue;
+        const c = clash(items[x], items[y], 0.4);
+        if (c) m = Math.max(m, c.d);
+      }
+    }
+    return m;
+  };
+  let chosen = null;
+  let fallback = null;
+  for (const shrink of [1, 0.94, 0.88, 0.82, 0.76, 0.7, 0.64]) {
+    for (const kind of kinds) {
+      const b = build(kind, shrink);
+      if (!b) continue;
+      const variants = [];
+      for (let z = 0; z < (kind === 'rot90' ? 3 : 5); z++) for (let s = 0; s < 2; s++) variants.push(kind === 'rot90' ? { zoneT: [0.15, 0.5, 0.85][z], side: s, flip: s, bleed: false } : { zoneT: [0, 0.5, 1, 0.25, 0.75][z], flip: s, side: 0, bleed: kind === 'diagonal' && heroLetters >= 5 && hash(li, seed + 43) < 0.6 });
+      const start = Math.floor(hash(li, seed + 44) * variants.length);
+      let best = null;
+      for (let k = 0; k < variants.length; k++) {
+        const v = variants[(start + k) % variants.length];
+        const items = finish(b, place(b, v), v);
+        const hc = { x: items[hero].cx / w, y: items[hero].cy / h };
+        const d = prevCenter ? Math.hypot(hc.x - prevCenter.x, hc.y - prevCenter.y) : 1;
+        const cand = { b, items, hc, d, v };
+        if (touching(items)) {
+          // (if every variant touches, the one whose words meet least is kept)
+          cand.t = meeting(items);
+          if (!fallback || cand.t < fallback.t) fallback = cand;
+          continue;
+        }
+        if (!best || d > best.d) best = cand;
+        if (d >= 0.22) break;
+      }
+      if (best && (!chosen || best.d > chosen.d)) chosen = best;
+      if (chosen && chosen.d >= 0.1) break; // far enough from the previous hero; otherwise try the next kind too
+    }
+    if (chosen) break;
+  }
+  if (!chosen) {
+    chosen = fallback;
+    plan.crowded = true; // no variant kept every word apart (only the very long lines at the smallest sizes)
   }
   plan.kind = chosen.b.kind;
   plan.words = chosen.items;

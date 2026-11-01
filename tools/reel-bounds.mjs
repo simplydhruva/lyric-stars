@@ -6,8 +6,13 @@
 import { startSession, waitFor } from './lib/headless.mjs';
 
 const verbose = process.argv.includes('--verbose');
+const argv = (n, d) => (process.argv.includes(n) ? Number(process.argv[process.argv.indexOf(n) + 1]) : d);
+const SEEDS = argv('--seeds', 4); // more seeds = more layouts checked (4 takes about 100 s)
+const FIRST = argv('--first-seed', 1);
+const ONLY = process.argv.includes('--only') ? process.argv[process.argv.indexOf('--only') + 1] : ''; // e.g. 2560x1440:Bangers:4:4 (size:font:seed:line) to look at one plan
 const s = await startSession({ port: 5421, width: 1280, height: 720 });
 const PAGE = `(async () => {
+  const ONLY = ${JSON.stringify(ONLY)};
   const M = await import('/js/scenes/reel-motion.js');
   const F = await import('/js/scenes/reel-fonts.js');
   const K = await import('/js/scenes/kinetic-layout.js');
@@ -18,7 +23,7 @@ const PAGE = `(async () => {
   const advanceOf = (id, ch) => { const k = id + ch; let v = adv.get(k); if (v === undefined) { g.font = F.weightOf(id) + ' 100px ' + F.familyOf(id); v = g.measureText(ch).width / 100; adv.set(k, v); } return v; };
   const metrics = (t, id, cap, key) => M.metricsOf(t, id, cap, advanceOf, key);
   const inks = new Map();
-  const inkFn = (id, ch) => { const k = id + ch; let v = inks.get(k); if (!v) { g.font = F.weightOf(id) + ' 100px ' + F.familyOf(id); const m = g.measureText(ch); v = [m.actualBoundingBoxLeft / 100, m.actualBoundingBoxRight / 100, m.actualBoundingBoxAscent / 100, m.actualBoundingBoxDescent / 100]; inks.set(k, v); } return v; };
+  const inkFn = (id, ch) => { const k = id + ch; let v = inks.get(k); if (!v) { g.font = F.weightOf(id) + ' 400px ' + F.familyOf(id); const m = g.measureText(ch); v = [m.actualBoundingBoxLeft / 400, m.actualBoundingBoxRight / 400, m.actualBoundingBoxAscent / 400, m.actualBoundingBoxDescent / 400]; inks.set(k, v); } return v; };
   const LINES = [
     'Love is a burning fire tonight', 'Dancing under the moon and the stars', 'Tears fall like rain on the ocean',
     'In the middle of the night when the stars are bright and the world is quiet and still and nobody knows my name at all',
@@ -47,14 +52,17 @@ const PAGE = `(async () => {
     return [minX, minY, maxX, maxY];
   };
   for (const [w, h] of SIZES) {
+    if (ONLY && ONLY.split(':')[0] !== w + 'x' + h) continue;
     const botY = M.bottomLimit(h);
     for (const mode of modes) {
       const single = mode.startsWith('single:') ? mode.slice(7) : null;
+      if (ONLY && ONLY.split(':')[1] !== (single || 'mix')) continue;
       const pf = out.perFont[single || 'mix'] || (out.perFont[single || 'mix'] = { plans: 0, bad: 0 });
-      for (let seed = 1; seed <= 4; seed++) {
+      for (let seed = ${FIRST}; seed < ${FIRST + SEEDS}; seed++) {
         const picker = F.createFontPicker();
         picker.configure(seed * 7919, F.FONT_IDS, false, null);
         let prev = null;
+        if (ONLY && Number(ONLY.split(':')[2]) !== seed) continue;
         LINES.forEach((text, li) => {
           const words = text.split(' ').map((t, i) => ({ text: t, start: i * 400, end: i * 400 + 350 }));
           const heroIdx = K.loudestIndex(words);
@@ -63,7 +71,7 @@ const PAGE = `(async () => {
           const plan = M.planLine({ w, h, li, seed: seed * 7919, words, texts, fonts: picks, prevCenter: prev && prev.words.length ? prev.heroCenter : null, prevKind: prev ? prev.kind : null, kind: M.kindOf(seed * 7919, li), metrics, ink: inkFn });
           prev = plan;
           out.plans++; pf.plans++;
-          const tag = w + 'x' + h + ' ' + (single || 'mix') + ' seed' + seed + ' line' + li + ' ' + plan.kind;
+          const tag = w + 'x' + h + ' ' + (single || 'mix') + ' seed' + seed + ' line' + li + ' ' + plan.kind + (plan.crowded ? ' [crowded fallback]' : '');
           const fail = (m) => {
             pf.bad++;
             const c = m.replace(/[0-9]+/g, '#').split(' ').slice(0, 4).join(' ');
@@ -98,6 +106,23 @@ const PAGE = `(async () => {
               if (b[0] < w * M.SAFE - tol || b[2] > w * (1 - M.SAFE) + tol || b[1] < h * M.SAFE - tol || b[3] > botY + tol || o[0] < 0 || o[1] < 0 || o[2] > w || o[3] > botY + 1e-6) { fail('"' + wd.text + '" ink ' + b.map(Math.round) + ' (outline ' + o.map(Math.round) + ')' + ' outside safe zone ' + [w * M.SAFE, h * M.SAFE, w * (1 - M.SAFE), botY].map(Math.round)); break; }
             }
           }
+          // two words (other than under the hero) must not overlap each other: letters of different words keep clear of one another
+          // (the black outline of a word, cap*0.085 around its letters, counts: it must not cover another word's letters either)
+          const boxes = plan.words.map((wd) => wd.letters.map((l) => corners(wd, l, 0)));
+          const outl = plan.words.map((wd) => wd.letters.map((l) => corners(wd, l, wd.cap * 0.085)));
+          for (let a = 0; a < plan.words.length; a++) for (let c = a + 1; c < plan.words.length; c++) {
+            const wa = plan.words[a], wc = plan.words[c];
+            if (wa === heroW || wc === heroW) continue; // against the hero: earlier words sit under it by design, later ones are checked on its shadow
+            let worst = 0;
+            for (const [P, Q] of [[boxes[a], outl[c]], [outl[a], boxes[c]]]) for (const ba of P) for (const bc of Q) {
+              const ox = Math.min(ba[2], bc[2]) - Math.max(ba[0], bc[0]);
+              const oy = Math.min(ba[3], bc[3]) - Math.max(ba[1], bc[1]);
+              if (ox > 0 && oy > 0) worst = Math.max(worst, Math.min(ox, oy));
+            }
+            out.worstWord = Math.max(out.worstWord || 0, worst);
+            if (ONLY && worst > 0) out.dbg = (out.dbg || []).concat([[wa.text, wc.text, wa.cap, wc.cap, wa.rot, wc.rot, boxes[a].map((b) => b.map(Math.round)), boxes[c].map((b) => b.map(Math.round)), wa.cx, wa.cy, wc.cx, wc.cy]]);
+            if (worst > 0.01) fail('"' + wa.text + '" and "' + wc.text + '" overlap by ' + worst.toFixed(1) + ' px');
+          }
           const cap = heroW.cap;
           for (const hl of heroW.letters) {
             const sb = corners(heroW, hl, cap * 0.085, cap * 0.07, cap * 0.085);
@@ -125,7 +150,8 @@ try {
   await s.goto(`${s.base}/?demo=&title=B&artist=B&duration=60&paused=&scene=reel`);
   await waitFor('page', () => s.js(`!!document.getElementById('card')`), 15000);
   const r = JSON.parse(await s.js(PAGE));
-  console.log(`plans checked: ${r.plans}, worst hero letter cut ${(r.worstCut * 100).toFixed(1)}%, fewest whole hero letters ${(r.minVis * 100).toFixed(0)}%, worst shadow overlap ${r.worstOverlap.toFixed(1)} px`);
+  console.log(`plans checked: ${r.plans}, worst hero letter cut ${(r.worstCut * 100).toFixed(1)}%, fewest whole hero letters ${(r.minVis * 100).toFixed(0)}%, worst shadow overlap ${r.worstOverlap.toFixed(1)} px, worst word-on-word overlap ${(r.worstWord || 0).toFixed(1)} px`);
+  if (r.dbg) console.log('dbg', JSON.stringify(r.dbg));
   console.log('problems by screen size:', JSON.stringify(r.bySize || {}));
   console.log('problem kinds:', JSON.stringify(r.kinds || {}));
   console.log('fonts checked:', Object.keys(r.perFont).join(', '));
