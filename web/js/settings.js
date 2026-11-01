@@ -57,6 +57,8 @@ const DEFAULTS = {
   beatPulse: false, // desktop app: stars and glow pulse to the beat of what the PC is playing (listens to system audio)
   emotion: true, // love, fire, night, rain and sun words get a small coloured glow (six scenes)
   emojis: true, // kinetic: an emoji appears next to words like love, fire and night (at most 2 a line)
+  filmLook: true, // polaroid: grain, a faded warm film look on the photos
+  polaroidFlash: false, // polaroid: a quick camera flash now and then (at most one line in four)
   songMap: true, // constellation: when the last line is done, every star fades together into one song map
   fullFrameRate: false, // draw on every refresh of a 120/144 Hz screen instead of about 60 times a second
   get reduceMotion() {

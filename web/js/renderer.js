@@ -145,6 +145,8 @@ export class Renderer {
     f.songMap = this.opts.songMap !== false;
     f.emotion = this.opts.emotion !== false;
     f.emojis = this.opts.emojis !== false;
+    f.film = this.opts.filmLook !== false;
+    f.polaroidFlash = this.opts.polaroidFlash === true;
     f.beat = beat;
     f.glow = Math.max(0, Math.min(1, (this.opts.glow ?? 25) / 100));
     this._scene(this.sceneId).draw(f);

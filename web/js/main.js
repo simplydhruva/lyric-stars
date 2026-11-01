@@ -230,6 +230,8 @@ function applyVisuals() {
     songMap: g('songMap'),
     emotion: g('emotion'),
     emojis: g('emojis'),
+    filmLook: g('filmLook'),
+    polaroidFlash: g('polaroidFlash'),
     beatPulse: g('beatPulse'),
     palette: app.palette,
     art: app.track?.artLarge || app.track?.art || null,

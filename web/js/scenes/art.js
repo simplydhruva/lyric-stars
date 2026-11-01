@@ -10,6 +10,11 @@ export function setArtListener(fn) {
   listener = fn;
 }
 
+// Asks the renderer to repaint (a font or something else a paused picture depends on has just arrived).
+export function pokeRedraw() {
+  listener?.();
+}
+
 export function artImage(url) {
   if (!url || typeof Image === 'undefined') return null;
   let e = cache.get(url);

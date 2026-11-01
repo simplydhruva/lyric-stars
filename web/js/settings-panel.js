@@ -80,6 +80,8 @@ export class SettingsPanel {
       <label class="check"><input type="checkbox" name="previewNext"${g('previewNext') ? ' checked' : ''}> Preview the next line as faint dots (constellation)</label>
       <label class="check"><input type="checkbox" name="songMap"${g('songMap') ? ' checked' : ''}> Show the whole song as one map at the end (constellation)</label>
       <label class="check"><input type="checkbox" name="emojis"${g('emojis') ? ' checked' : ''}> Emojis next to words like love and fire (Kinetic scene)</label>
+      <label class="check"><input type="checkbox" name="filmLook"${g('filmLook') ? ' checked' : ''}> Film look: grain and faded colour on the photos (Polaroid scene)</label>
+      <label class="check"><input type="checkbox" name="polaroidFlash"${g('polaroidFlash') ? ' checked' : ''}> Camera flash now and then (Polaroid scene)</label>
       <label class="check"><input type="checkbox" name="emotion"${g('emotion') ? ' checked' : ''}> Glow on words like love, fire and night (some scenes)</label>
 ${this.host.desktop ? `      <label class="check"><input type="checkbox" name="beatPulse"${g('beatPulse') ? ' checked' : ''}> Pulse to the beat (listens to the sound your PC is playing)</label>
       <p>${esc(this.host.beatStatus?.() || '')}Windows only. Lyric Stars measures the loudness of your PC's audio output to find the beat; it records nothing and sends nothing. Windows may show a screen-capture indicator while this is on.</p>
