@@ -33,6 +33,18 @@ export function written(word, pos, still, mode, line) {
   return clamp((pos - start) / span, 0, 1);
 }
 
+// The pen on one word. frac is written() (0..1), width the word's width, font its size in px. Returns how wide the ink
+// has filled (fillW), how far the outline has been traced ahead of it (traceW, always a little past the fill so the first
+// letter's outline is on screen on the very frame the word starts), and how long the traced dash is (dash). The pen
+// leads, the ink follows. With reduce motion, or once the word is done, it is all ink and no outline.
+export function penState(frac, width, font, still = false) {
+  if (still || frac >= 1) return { fillW: width, traceW: width, dash: 0, tracing: false };
+  const lag = font * 0.55;
+  const fillW = clamp(frac * width - lag * (1 - frac), 0, width);
+  const traceW = clamp(frac * width + font * 0.3, 0, width);
+  return { fillW, traceW, dash: font * (0.6 + 5 * clamp(frac, 0, 1)), tracing: true };
+}
+
 // Ink fades after the line is done: held for a while, then dimmer before the next line is long under way.
 export const inkAlpha = (sinceLineStart) => 1 - clamp((sinceLineStart - 3000) / 2500, 0, 1) * 0.55;
 
